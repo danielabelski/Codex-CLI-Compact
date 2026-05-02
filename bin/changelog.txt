@@ -1,3 +1,8 @@
+3.9.65
+- Fixed: MCP server now locks to one project per process — graph_scan() with a different path is rejected instead of silently flipping the active project under a running session (fixes wrong-repo cross-talk when running dgc/dg in two terminals)
+- Fixed: stale info_graph.json from a previous project under the same .dual-graph dir is detected via stamped root and triggers needs_project=true on graph_continue
+- Added: graph_continue responses now include the active project_root so the model can see which repo it's working against
+
 3.9.64
 - Fixed: MCP server now binds to 127.0.0.1 instead of 0.0.0.0 — eliminates network exposure on shared/VM setups
 - Fixed: all MCP registration URLs, health checks, and hooks use 127.0.0.1 — resolves IPv6 connection failures on Windows
