@@ -44,6 +44,7 @@ HARD_BASH = re.compile(
     r"(?:^|[;&|\n]\s*)rm\s+(?:-[rRf]+\s+){1,3}\S+"   # rm -rf / rm -r
     r"|(?:^|[;&|\n]\s*)find\s+.+?-delete"             # find . -delete
     r"|(?:^|[;&|\n]\s*):\s*>\s*\S+"                   # : > file  (truncate)
+    r"|(?:^|[;&|\n]\s*)truncate\s"                    # truncate -s 0 file
     r"|(?:^|[;&|\n]\s*)dd\s+if=/dev/zero"             # zero-fill
     r"|(?:^|[;&|\n]\s*)mkfs\b"                        # format
     r"|(?:^|[;&|\n]\s*)shred\s",
@@ -171,7 +172,7 @@ for raw_path in paths:
         except Exception:
             abs_graph = Path(rel_path)
         if abs_target == abs_graph:
-            if rec["score"] >= 2.0:
+            if rec["score"] >= 4.0:
                 at_risk.append({"path": rel_path, **rec})
             break
 
@@ -211,6 +212,9 @@ if exit_code == 2:
     lines.append("Please type 'yes, proceed' to confirm, or rephrase your request.")
 else:
     lines.append("Please confirm with the user before proceeding.")
+
+lines.append("")
+lines.append("  (To bypass: set DG_UNDO_SHIELD=0 in your environment)")
 
 print("\n".join(lines))
 sys.exit(exit_code)

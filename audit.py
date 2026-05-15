@@ -153,6 +153,7 @@ def check_circular_deps(graph: dict) -> list[list[str]]:
                 if not any(frozenset(c) == fkey for c in cycles):
                     cycles.append(cyc)
             elif nb not in seen:
+                seen.add(nb)  # mark before recursing to avoid redundant subgraph traversal
                 on_stack.add(nb)
                 dfs(nb, path + [nb], on_stack)
                 on_stack.discard(nb)
@@ -269,6 +270,7 @@ def debt_score(r: dict) -> int:
     score += min(10, len(r.get("copy_paste",     [])) * 2)
     score += min(5,  len(r.get("db_in_routes",   [])))
     score += min(5,  len(r.get("todos",          [])) // 4)
+    score += min(5,  len(r.get("missing_error_handling", [])) // 3)
     return min(100, score)
 
 # ── Fix roadmap ───────────────────────────────────────────────────────────────
@@ -300,6 +302,12 @@ def fix_roadmap(r: dict) -> list[dict]:
         files = list({d["file"] for d in dead[:6]})[:4]
         tasks.append({"week": 3, "label": f"Remove {len(dead)} dead exports",
                       "files": files, "why": "Dead code increases bundle size and confuses readers"})
+    noerr = r.get("missing_error_handling", [])
+    if noerr:
+        files = list({e["file"] for e in noerr[:5]})[:4]
+        tasks.append({"week": 2, "label": f"Add error handling to {len(noerr)} external call(s)",
+                      "files": files,
+                      "why": "Unhandled network/RPC errors cause silent failures in production"})
     return tasks
 
 # ── Terminal report ───────────────────────────────────────────────────────────
