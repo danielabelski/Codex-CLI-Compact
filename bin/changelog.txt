@@ -1,3 +1,12 @@
+3.9.66
+- Fixed: Vibe Code Auditor debt score now includes missing error handling check (check 7 contributed 0 pts before)
+- Fixed: Vibe Code Auditor fix roadmap now surfaces missing error handling entries
+- Fixed: circular deps DFS marks nodes seen before recursing — eliminates O(V²) re-traversal on large graphs
+- Fixed: Undo Shield threshold raised 2.0 → 4.0 — single file read no longer triggers a warning
+- Fixed: Undo Shield now catches truncate command as a hard destructive operation
+- Fixed: Undo Shield warning now includes bypass hint (DG_UNDO_SHIELD=0)
+- Added: Undo Shield, Vibe Code Auditor (dgc audit), rate limit failover with --model flag
+
 3.9.65
 - Fixed: MCP server now locks to one project per process — graph_scan() with a different path is rejected instead of silently flipping the active project under a running session (fixes wrong-repo cross-talk when running dgc/dg in two terminals)
 - Fixed: stale info_graph.json from a previous project under the same .dual-graph dir is detected via stamped root and triggers needs_project=true on graph_continue
