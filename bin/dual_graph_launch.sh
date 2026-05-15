@@ -8,9 +8,23 @@ set -Eeuo pipefail
 
 ASSISTANT="${1:-}"
 ASSISTANT="${ASSISTANT#--}"   # strip leading -- so --claude == claude
+
+# ── audit subcommand ──────────────────────────────────────────────────────────
+if [[ "$ASSISTANT" == "audit" ]]; then
+  shift
+  AUDIT_ROOT="${1:-$(pwd)}"
+  AUDIT_ROOT="$(cd "$AUDIT_ROOT" && pwd)"
+  SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+  PYTHON="${SCRIPT_DIR}/venv/bin/python3"
+  [[ ! -f "$PYTHON" ]] && PYTHON=python3
+  echo ""
+  exec "$PYTHON" "$SCRIPT_DIR/../audit.py" --root "$AUDIT_ROOT" "${@:2}"
+fi
+
 if [[ "$ASSISTANT" != "codex" && "$ASSISTANT" != "claude" && "$ASSISTANT" != "cursor" \
    && "$ASSISTANT" != "gemini" && "$ASSISTANT" != "opencode" && "$ASSISTANT" != "copilot" ]]; then
   echo "Usage: $0 <codex|claude|cursor|gemini|opencode|copilot> [project_path] [prompt]" >&2
+  echo "       $0 audit [project_path]   — vibe code health report" >&2
   exit 2
 fi
 shift
@@ -27,6 +41,35 @@ RESUME_ID=""
 PROMPT=""
 CLAUDE_EXTRA_ARGS=()
 _PROJECT_SET=false
+FAILOVER_MODEL=""  # set by --model=codex|local|gemini|opencode
+
+# ── Strip --model flag before Claude's own flag parser sees it ────────────────
+_FILTERED=()
+for _fa in "$@"; do
+  if [[ "$_fa" == --model=codex || "$_fa" == --model=local || "$_fa" == --model=ollama \
+     || "$_fa" == --model=gemini || "$_fa" == --model=opencode ]]; then
+    FAILOVER_MODEL="${_fa#--model=}"
+  else
+    _FILTERED+=("$_fa")
+  fi
+done
+[[ ${#_FILTERED[@]} -gt 0 ]] && set -- "${_FILTERED[@]}"
+# Apply failover model override
+if [[ -n "$FAILOVER_MODEL" ]]; then
+  case "$FAILOVER_MODEL" in
+    codex|openai)  ASSISTANT="codex" ;;
+    gemini)        ASSISTANT="gemini" ;;
+    opencode)      ASSISTANT="opencode" ;;
+    local|ollama)
+      ASSISTANT="codex"
+      export OPENAI_BASE_URL="http://localhost:11434/v1"
+      export OPENAI_API_KEY="ollama"
+      _OM="$(curl -sf --max-time 2 'http://localhost:11434/api/tags' 2>/dev/null \
+        | python3 -c "import json,sys; ms=[m['name'] for m in json.load(sys.stdin).get('models',[])]; print(ms[0] if ms else '')" 2>/dev/null || echo "")"
+      [[ -n "$_OM" ]] && export OPENAI_DEFAULT_MODEL="$_OM" && echo "[dgc] Using local model: $_OM"
+      ;;
+  esac
+fi
 
 # Claude CLI flags — three categories:
 # 1. Single-value: always consume exactly the next argument
@@ -1288,6 +1331,17 @@ if [[ -f "$PROJECT/CONTEXT.md" ]]; then
   cat "$PROJECT/CONTEXT.md"
   echo "=== end CONTEXT.md ==="
 fi
+# Inject AUDIT_CONTEXT.md if recent (< 7 days) — tells Claude what to fix
+AUDIT_CTX="$PROJECT/.dual-graph/AUDIT_CONTEXT.md"
+if [[ -f "\$AUDIT_CTX" ]]; then
+  _AGE_SEC=\$(( \$(date +%s) - \$(python3 -c "import os; print(int(os.path.getmtime('\$AUDIT_CTX')))" 2>/dev/null || echo 0) ))
+  if [[ "\$_AGE_SEC" -lt 604800 ]]; then
+    echo ""
+    echo "=== Audit Context ==="
+    cat "\$AUDIT_CTX"
+    echo "=== end Audit Context ==="
+  fi
+fi
 # Inject context store entries (decisions, tasks, next steps) — max 15 lines, 7-day window
 STORE="$PROJECT/.dual-graph/context-store.json"
 if [[ -f "\$STORE" ]] && command -v jq &>/dev/null; then
@@ -1385,22 +1439,27 @@ STOPEOF
 
   mkdir -p "$PROJECT/.claude"
   PRIME_CMD="$DATA_DIR/prime.sh"
+  SHIELD_SCRIPT="$SCRIPT_DIR/undo_shield.py"
   # Write JSON via Python to avoid quoting/escaping issues in paths with spaces.
-  "$PYTHON" - "$PROJECT/.claude/settings.local.json" "$PRIME_CMD" "$DATA_DIR/stop.sh" <<'PY'
+  "$PYTHON" - "$PROJECT/.claude/settings.local.json" "$PRIME_CMD" "$DATA_DIR/stop.sh" "$SHIELD_SCRIPT" "$DATA_DIR" <<'PY'
 import json, sys, platform, os
-settings_file = sys.argv[1]
-prime_cmd = sys.argv[2]
-stop_cmd = sys.argv[3]
-# Use plain "bash" on Windows (Git Bash resolves it); /bin/bash on Unix
-bash = "bash" if platform.system() == "Windows" else "/bin/bash"
-hook_cmd = f'{bash} "{prime_cmd}"'
-stop_hook_cmd = f'{bash} "{stop_cmd}"'
+settings_file  = sys.argv[1]
+prime_cmd      = sys.argv[2]
+stop_cmd       = sys.argv[3]
+shield_script  = sys.argv[4]
+dg_data_dir    = sys.argv[5]
+bash   = "bash" if platform.system() == "Windows" else "/bin/bash"
+python = sys.executable
+hook_cmd       = f'{bash} "{prime_cmd}"'
+stop_hook_cmd  = f'{bash} "{stop_cmd}"'
+shield_cmd     = f'DG_DATA_DIR="{dg_data_dir}" {python} "{shield_script}"'
 dgc_hooks = {
     "SessionStart": [{"matcher": "", "hooks": [{"type": "command", "command": hook_cmd}]}],
     "PreCompact":   [{"matcher": "", "hooks": [{"type": "command", "command": hook_cmd}]}],
     "Stop":         [{"matcher": "", "hooks": [{"type": "command", "command": stop_hook_cmd}]}],
+    "PreToolUse":   [{"matcher": "Write|Edit|Bash|NotebookEdit",
+                      "hooks": [{"type": "command", "command": shield_cmd}]}],
 }
-# Read existing settings so we don't wipe user's permissions/other keys
 existing = {}
 if os.path.exists(settings_file):
     try:
@@ -1408,24 +1467,23 @@ if os.path.exists(settings_file):
             existing = json.load(f)
     except Exception:
         pass
-# Merge hooks: remove stale dgc entries, prepend fresh ones, keep user's other hooks
 existing_hooks = existing.get("hooks", {})
-merged_hooks = dict(existing_hooks)
+merged_hooks   = dict(existing_hooks)
 for hook_type, new_entries in dgc_hooks.items():
-    old = existing_hooks.get(hook_type, [])
-    # Strip out old dgc-managed entries (identified by prime/stop script paths)
+    old  = existing_hooks.get(hook_type, [])
     kept = [e for e in old if not any(
         "prime.sh" in h.get("command", "") or "stop.sh" in h.get("command", "") or
-        "prime.ps1" in h.get("command", "") or "stop_hook" in h.get("command", "")
+        "prime.ps1" in h.get("command", "") or "stop_hook" in h.get("command", "") or
+        "undo_shield" in h.get("command", "")
         for h in e.get("hooks", [])
     )]
-    merged_hooks[hook_type] = new_entries + kept  # dgc hooks first for priority
+    merged_hooks[hook_type] = new_entries + kept
 payload = {**existing, "hooks": merged_hooks}
 with open(settings_file, "w", encoding="utf-8") as f:
     json.dump(payload, f, indent=2)
     f.write("\n")
 PY
-  echo "[$TOOL_LABEL] Context hooks ready (SessionStart + PreCompact)"
+  echo "[$TOOL_LABEL] Context hooks ready (SessionStart + PreCompact + Undo Shield)"
 fi
 # ──────────────────────────────────────────────────────────────────────────────
 
@@ -2009,6 +2067,41 @@ PY
     echo ""
     echo "[$TOOL_LABEL] To resume this session with dual-graph:"
     echo "[$TOOL_LABEL]   dgc --resume \"$_LAST_SESSION\""
+  fi
+fi
+
+# ── Rate limit failover ────────────────────────────────────────────────────────
+if [[ "$ASSISTANT" == "claude" && "$ASSISTANT_EXIT" -ne 0 && "$ASSISTANT_EXIT" -ne 130 && "$ASSISTANT_EXIT" -ne 143 ]]; then
+  _STDERR_CONTENT="$(cat "$RUN_DIR/assistant_stderr.log" 2>/dev/null || true)"
+  if echo "$_STDERR_CONTENT" | grep -qiE "rate.limit|overloaded|too many request|quota exceeded|529|slowdown|capacity"; then
+    echo ""
+    echo "[$TOOL_LABEL] Claude rate limit detected. Your graph and session context are preserved."
+    echo ""
+    echo "[$TOOL_LABEL] Failover options (same graph, zero re-exploration):"
+    _HAS_FAILOVER=false
+    if command -v codex &>/dev/null; then
+      _HAS_FAILOVER=true
+      echo "[$TOOL_LABEL]   Codex (GPT-5.5):"
+      echo "[$TOOL_LABEL]     dg \"$PROJECT\""
+      echo "[$TOOL_LABEL]     dgc --model=codex \"$PROJECT\""
+    fi
+    if curl -sf --max-time 1 "http://localhost:11434/api/tags" >/dev/null 2>&1; then
+      _HAS_FAILOVER=true
+      _OM="$(curl -sf --max-time 2 'http://localhost:11434/api/tags' 2>/dev/null \
+        | python3 -c "import json,sys; ms=[m['name'] for m in json.load(sys.stdin).get('models',[])]; print(', '.join(ms[:3]))" 2>/dev/null || echo "local model")"
+      echo "[$TOOL_LABEL]   Local (Ollama — $_OM):"
+      echo "[$TOOL_LABEL]     dgc --model=local \"$PROJECT\""
+    fi
+    if command -v gemini &>/dev/null; then
+      _HAS_FAILOVER=true
+      echo "[$TOOL_LABEL]   Gemini CLI:  dgc --model=gemini \"$PROJECT\""
+    fi
+    if [[ "$_HAS_FAILOVER" == "false" ]]; then
+      echo "[$TOOL_LABEL]   Install Codex:  npm install -g @openai/codex"
+      echo "[$TOOL_LABEL]   Install Ollama: https://ollama.com  (free, local, no limits)"
+    fi
+    echo ""
+    echo "[$TOOL_LABEL]   Or wait for the rate limit to reset and run dgc again."
   fi
 fi
 
