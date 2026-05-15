@@ -409,6 +409,16 @@ try {
         Invoke-WebRequestWithRetry -Uri "$BASE_URL/bin/graperoot.ps1" -OutFile "$INSTALL_DIR\graperoot.ps1" -Label "Download graperoot.ps1 (GitHub fallback)"
     }
     try {
+        Invoke-WebRequestWithRetry -Uri "$R2/audit.py" -OutFile "$INSTALL_DIR\audit.py" -Label "Download audit.py"
+    } catch {
+        try { Invoke-WebRequestWithRetry -Uri "$BASE_URL/audit.py" -OutFile "$INSTALL_DIR\audit.py" -Label "Download audit.py (GitHub fallback)" } catch {}
+    }
+    try {
+        Invoke-WebRequestWithRetry -Uri "$R2/undo_shield.py" -OutFile "$INSTALL_DIR\undo_shield.py" -Label "Download undo_shield.py"
+    } catch {
+        try { Invoke-WebRequestWithRetry -Uri "$BASE_URL/bin/undo_shield.py" -OutFile "$INSTALL_DIR\undo_shield.py" -Label "Download undo_shield.py (GitHub fallback)" } catch {}
+    }
+    try {
         Invoke-WebRequestWithRetry -Uri "$BASE_URL/bin/version.txt" -OutFile "$INSTALL_DIR\version.txt" -Label "Download version.txt"
     } catch {
         try { Invoke-WebRequestWithRetry -Uri "$R2/version.txt" -OutFile "$INSTALL_DIR\version.txt" -Label "Download version.txt fallback" } catch {}

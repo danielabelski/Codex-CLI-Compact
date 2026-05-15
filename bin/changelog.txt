@@ -1,3 +1,8 @@
+3.9.67
+- Fixed: audit.py and undo_shield.py now included in installer and auto-update (were missing from distribution)
+- Fixed: dgc audit path bug — looked for audit.py in home directory instead of install dir
+- Fixed: undo_shield.py and audit.py now uploaded to R2 CDN for reliable delivery
+
 3.9.66
 - Fixed: Vibe Code Auditor debt score now includes missing error handling check (check 7 contributed 0 pts before)
 - Fixed: Vibe Code Auditor fix roadmap now surfaces missing error handling entries

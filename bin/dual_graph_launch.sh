@@ -18,7 +18,7 @@ if [[ "$ASSISTANT" == "audit" ]]; then
   PYTHON="${SCRIPT_DIR}/venv/bin/python3"
   [[ ! -f "$PYTHON" ]] && PYTHON=python3
   echo ""
-  exec "$PYTHON" "$SCRIPT_DIR/../audit.py" --root "$AUDIT_ROOT" "${@:2}"
+  exec "$PYTHON" "$SCRIPT_DIR/audit.py" --root "$AUDIT_ROOT" "${@:2}"
 fi
 
 if [[ "$ASSISTANT" != "codex" && "$ASSISTANT" != "claude" && "$ASSISTANT" != "cursor" \
@@ -417,6 +417,11 @@ if [[ -n "$_REMOTE_VER" ]] && _version_gt "$_REMOTE_VER" "$_LOCAL_VER"; then
     && chmod +x "$SCRIPT_DIR/graperoot" || true
   curl -fsSL --max-time 15 "$_BASE_URL/bin/graperoot.cmd" -o "$SCRIPT_DIR/graperoot.cmd" 2>/dev/null || true
   curl -fsSL --max-time 15 "$_BASE_URL/bin/graperoot.ps1" -o "$SCRIPT_DIR/graperoot.ps1" 2>/dev/null || true
+  # Update audit.py and undo_shield.py
+  curl -fsSL --max-time 15 "$_BASE_URL/audit.py" -o "$SCRIPT_DIR/audit.py" 2>/dev/null \
+    || curl -fsSL --max-time 15 "$_R2/audit.py" -o "$SCRIPT_DIR/audit.py" 2>/dev/null || true
+  curl -fsSL --max-time 15 "$_BASE_URL/bin/undo_shield.py" -o "$SCRIPT_DIR/undo_shield.py" 2>/dev/null \
+    || curl -fsSL --max-time 15 "$_R2/undo_shield.py" -o "$SCRIPT_DIR/undo_shield.py" 2>/dev/null || true
   echo "$_REMOTE_VER" > "$SCRIPT_DIR/version.txt"
   # Upgrade graperoot so venv gets latest mcp_graph_server + compiled modules
   if [[ -x "$VENV_BIN/pip" ]]; then
