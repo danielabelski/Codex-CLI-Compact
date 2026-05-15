@@ -18,7 +18,7 @@ if [[ "$ASSISTANT" == "audit" ]]; then
   PYTHON="${SCRIPT_DIR}/venv/bin/python3"
   [[ ! -f "$PYTHON" ]] && PYTHON=python3
   echo ""
-  exec "$PYTHON" "$SCRIPT_DIR/audit.py" --root "$AUDIT_ROOT" "${@:2}"
+  exec "$PYTHON" -c "from graperoot.audit import main; main()" --root "$AUDIT_ROOT" "${@:2}"
 fi
 
 if [[ "$ASSISTANT" != "codex" && "$ASSISTANT" != "claude" && "$ASSISTANT" != "cursor" \
@@ -417,11 +417,7 @@ if [[ -n "$_REMOTE_VER" ]] && _version_gt "$_REMOTE_VER" "$_LOCAL_VER"; then
     && chmod +x "$SCRIPT_DIR/graperoot" || true
   curl -fsSL --max-time 15 "$_BASE_URL/bin/graperoot.cmd" -o "$SCRIPT_DIR/graperoot.cmd" 2>/dev/null || true
   curl -fsSL --max-time 15 "$_BASE_URL/bin/graperoot.ps1" -o "$SCRIPT_DIR/graperoot.ps1" 2>/dev/null || true
-  # Update audit.py and undo_shield.py
-  curl -fsSL --max-time 15 "$_BASE_URL/audit.py" -o "$SCRIPT_DIR/audit.py" 2>/dev/null \
-    || curl -fsSL --max-time 15 "$_R2/audit.py" -o "$SCRIPT_DIR/audit.py" 2>/dev/null || true
-  curl -fsSL --max-time 15 "$_BASE_URL/bin/undo_shield.py" -o "$SCRIPT_DIR/undo_shield.py" 2>/dev/null \
-    || curl -fsSL --max-time 15 "$_R2/undo_shield.py" -o "$SCRIPT_DIR/undo_shield.py" 2>/dev/null || true
+  # audit + undo_shield now ship inside the graperoot pip package — upgraded below
   echo "$_REMOTE_VER" > "$SCRIPT_DIR/version.txt"
   # Upgrade graperoot so venv gets latest mcp_graph_server + compiled modules
   if [[ -x "$VENV_BIN/pip" ]]; then
@@ -1444,20 +1440,18 @@ STOPEOF
 
   mkdir -p "$PROJECT/.claude"
   PRIME_CMD="$DATA_DIR/prime.sh"
-  SHIELD_SCRIPT="$SCRIPT_DIR/undo_shield.py"
   # Write JSON via Python to avoid quoting/escaping issues in paths with spaces.
-  "$PYTHON" - "$PROJECT/.claude/settings.local.json" "$PRIME_CMD" "$DATA_DIR/stop.sh" "$SHIELD_SCRIPT" "$DATA_DIR" <<'PY'
+  "$PYTHON" - "$PROJECT/.claude/settings.local.json" "$PRIME_CMD" "$DATA_DIR/stop.sh" "$DATA_DIR" <<'PY'
 import json, sys, platform, os
 settings_file  = sys.argv[1]
 prime_cmd      = sys.argv[2]
 stop_cmd       = sys.argv[3]
-shield_script  = sys.argv[4]
-dg_data_dir    = sys.argv[5]
+dg_data_dir    = sys.argv[4]
 bash   = "bash" if platform.system() == "Windows" else "/bin/bash"
 python = sys.executable
 hook_cmd       = f'{bash} "{prime_cmd}"'
 stop_hook_cmd  = f'{bash} "{stop_cmd}"'
-shield_cmd     = f'DG_DATA_DIR="{dg_data_dir}" {python} "{shield_script}"'
+shield_cmd     = f'DG_DATA_DIR="{dg_data_dir}" {python} -c "from graperoot.undo_shield import main; main()"'
 dgc_hooks = {
     "SessionStart": [{"matcher": "", "hooks": [{"type": "command", "command": hook_cmd}]}],
     "PreCompact":   [{"matcher": "", "hooks": [{"type": "command", "command": hook_cmd}]}],
@@ -1479,7 +1473,7 @@ for hook_type, new_entries in dgc_hooks.items():
     kept = [e for e in old if not any(
         "prime.sh" in h.get("command", "") or "stop.sh" in h.get("command", "") or
         "prime.ps1" in h.get("command", "") or "stop_hook" in h.get("command", "") or
-        "undo_shield" in h.get("command", "")
+        "undo_shield" in h.get("command", "") or "graperoot.undo_shield" in h.get("command", "")
         for h in e.get("hooks", [])
     )]
     merged_hooks[hook_type] = new_entries + kept

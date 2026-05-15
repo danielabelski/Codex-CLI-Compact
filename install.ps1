@@ -409,16 +409,6 @@ try {
         Invoke-WebRequestWithRetry -Uri "$BASE_URL/bin/graperoot.ps1" -OutFile "$INSTALL_DIR\graperoot.ps1" -Label "Download graperoot.ps1 (GitHub fallback)"
     }
     try {
-        Invoke-WebRequestWithRetry -Uri "$R2/audit.py" -OutFile "$INSTALL_DIR\audit.py" -Label "Download audit.py"
-    } catch {
-        try { Invoke-WebRequestWithRetry -Uri "$BASE_URL/audit.py" -OutFile "$INSTALL_DIR\audit.py" -Label "Download audit.py (GitHub fallback)" } catch {}
-    }
-    try {
-        Invoke-WebRequestWithRetry -Uri "$R2/undo_shield.py" -OutFile "$INSTALL_DIR\undo_shield.py" -Label "Download undo_shield.py"
-    } catch {
-        try { Invoke-WebRequestWithRetry -Uri "$BASE_URL/bin/undo_shield.py" -OutFile "$INSTALL_DIR\undo_shield.py" -Label "Download undo_shield.py (GitHub fallback)" } catch {}
-    }
-    try {
         Invoke-WebRequestWithRetry -Uri "$BASE_URL/bin/version.txt" -OutFile "$INSTALL_DIR\version.txt" -Label "Download version.txt"
     } catch {
         try { Invoke-WebRequestWithRetry -Uri "$R2/version.txt" -OutFile "$INSTALL_DIR\version.txt" -Label "Download version.txt fallback" } catch {}
@@ -454,7 +444,7 @@ try {
     # Use Invoke-Native for ALL pip calls  -  Python prints pywin32.pth errors to stderr
     # on startup even after we delete the .pth, and EAP=Stop turns that into a crash.
     Invoke-Native { & $venvPy -m pip install --upgrade pip --quiet } | Out-Null
-    Invoke-Native { & $venvPy -m pip install "mcp>=1.3.0" uvicorn anyio starlette --quiet --constraint $constraintsFile } | Out-Null
+    Invoke-Native { & $venvPy -m pip install "mcp>=1.3.0" uvicorn anyio starlette graperoot --quiet --constraint $constraintsFile } | Out-Null
 
     # Verify mcp is importable
     $step = "Verifying MCP import"

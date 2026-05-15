@@ -1,3 +1,11 @@
+3.9.69
+- Added: audit.py and undo_shield.py compiled to .so and shipped inside graperoot pip package
+- Changed: install.sh and install.ps1 now pip-install graperoot (includes compiled audit+shield)
+- Changed: dgc audit now invokes compiled graperoot.audit module, not standalone script
+- Changed: Undo Shield hook uses compiled graperoot.undo_shield module
+- Fixed: Cython-incompatible dict[str,set[str]] type annotations in audit.py removed
+- Fixed: undo_shield.py refactored to main() so it is safely importable as a module
+
 3.9.68
 - Added: GitHub Actions cibuildwheel — compiled .so wheels now published to PyPI for Linux x86_64/arm64, macOS x86_64/arm64, Windows AMD64, Python 3.10-3.13
 - Fixed: mcp_graph_server excluded from Cython compilation (async decorators incompatible)

@@ -132,7 +132,7 @@ def check_test_coverage(graph: dict, root: Path) -> dict:
 # ── Check 3: Circular deps ────────────────────────────────────────────────────
 def check_circular_deps(graph: dict) -> list[list[str]]:
     edges = graph.get("edges", [])
-    adj: dict[str, set[str]] = defaultdict(set)
+    adj = defaultdict(set)
     for e in edges:
         if e.get("rel") in {"imports", "references"}:
             s, d = e.get("from", ""), e.get("to", "")
@@ -168,7 +168,7 @@ def check_circular_deps(graph: dict) -> list[list[str]]:
 # ── Check 4: Copy-paste ───────────────────────────────────────────────────────
 def check_copy_paste(graph: dict) -> list[dict]:
     nodes    = graph.get("nodes", [])
-    by_hash: dict[str, list[dict]] = defaultdict(list)
+    by_hash = defaultdict(list)
 
     for n in nodes:
         if n.get("kind") != "symbol":
@@ -244,7 +244,7 @@ ERR_RE = re.compile(r"\btry\b|\bcatch\b|\bexcept\b|\brescue\b", re.IGNORECASE)
 
 def check_missing_error_handling(graph: dict, root: Path) -> list[dict]:
     issues  = []
-    cache: dict[str, list[str]] = {}
+    cache = {}
     for n in graph.get("nodes", []):
         if n.get("kind") != "symbol" or Path(n.get("file","")).suffix not in CODE_EXTS:
             continue
