@@ -1,3 +1,9 @@
+3.9.68
+- Added: GitHub Actions cibuildwheel — compiled .so wheels now published to PyPI for Linux x86_64/arm64, macOS x86_64/arm64, Windows AMD64, Python 3.10-3.13
+- Fixed: mcp_graph_server excluded from Cython compilation (async decorators incompatible)
+- Fixed: pyproject.toml now includes *.so in package-data and excludes *.c
+- Added: cibuildwheel config in pyproject.toml (archs, skip, test-command)
+
 3.9.67
 - Fixed: audit.py and undo_shield.py now included in installer and auto-update (were missing from distribution)
 - Fixed: dgc audit path bug — looked for audit.py in home directory instead of install dir
