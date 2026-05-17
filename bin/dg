@@ -10,4 +10,8 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+if [[ "${1:-}" == "audit" ]]; then
+  exec "$SCRIPT_DIR/dual_graph_launch.sh" audit "${@:2}"
+fi
+
 exec "$SCRIPT_DIR/dual_graph_launch.sh" codex "$@"

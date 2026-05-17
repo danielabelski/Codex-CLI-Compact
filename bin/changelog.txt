@@ -1,3 +1,7 @@
+3.9.70
+- Fixed: dgc audit and dg audit now correctly route to graperoot.audit (bin/dgc and bin/dg were missing audit subcommand handler)
+- Fixed: dual_graph_launch.sh audit fallback — tries ~/.dual-graph/venv before system python3
+
 3.9.69
 - Added: audit.py and undo_shield.py compiled to .so and shipped inside graperoot pip package
 - Changed: install.sh and install.ps1 now pip-install graperoot (includes compiled audit+shield)

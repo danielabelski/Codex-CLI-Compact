@@ -16,6 +16,10 @@ if [[ "$ASSISTANT" == "audit" ]]; then
   AUDIT_ROOT="$(cd "$AUDIT_ROOT" && pwd)"
   SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
   PYTHON="${SCRIPT_DIR}/venv/bin/python3"
+  # Verify graperoot.audit is importable — falls back to installed venv if not
+  if [[ ! -f "$PYTHON" ]] || ! "$PYTHON" -c "from graperoot.audit import main" 2>/dev/null; then
+    PYTHON="$HOME/.dual-graph/venv/bin/python3"
+  fi
   [[ ! -f "$PYTHON" ]] && PYTHON=python3
   echo ""
   exec "$PYTHON" -c "from graperoot.audit import main; main()" --root "$AUDIT_ROOT" "${@:2}"
