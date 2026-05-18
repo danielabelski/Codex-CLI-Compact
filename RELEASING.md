@@ -18,6 +18,7 @@ Follow this checklist **exactly** when bumping a version. All three repos must s
 | Dashboard | `README.md` | `Current version: **X.Y.Z**` |
 | Core | `src/graperoot/__init__.py` | `__version__ = "X.Y.Z"` |
 | Core | `pyproject.toml` | `version = "X.Y.Z"` |
+| Core | `version.txt` | Entire file content (synced to R2 by sync-r2.yml on every push) |
 | Scoop | `bucket/dual-graph.json` | `"version": "X.Y.Z"` |
 
 ## What ships where
@@ -75,6 +76,8 @@ sed -i '' 's/__version__ = "[0-9.]*"/__version__ = "X.Y.Z"/' \
 
 sed -i '' 's/^version = "[0-9.]*"/version = "X.Y.Z"/' \
   ~/Documents/Open\ source/Claude-CLI-Compact-core/pyproject.toml
+
+printf "X.Y.Z" > ~/Documents/Open\ source/Claude-CLI-Compact-core/version.txt
 ```
 
 ### 4. Commit Dashboard
@@ -114,7 +117,7 @@ In `scoop-dual-graph/bucket/dual-graph.json`, update:
 ```bash
 # Core — always include changelog.txt + version files; add any changed source files
 cd ~/Documents/Open\ source/Claude-CLI-Compact-core
-git add src/graperoot/__init__.py pyproject.toml changelog.txt  # + any changed .py files
+git add src/graperoot/__init__.py pyproject.toml changelog.txt version.txt  # + any changed .py files
 git commit -m "X.Y.Z: <description>"
 
 # Scoop
@@ -321,6 +324,7 @@ Before releasing any change to `dual_graph_launch.sh` or `dgc.ps1`, verify:
 - **Skipping R2** — always upload changed launcher files + version.txt on every release.
 - **Shell variable in `--endpoint-url`** — pass the R2 URL as a literal string; a variable silently expands to empty.
 - **Forgetting `pyproject.toml`** — `__init__.py` and `pyproject.toml` versions must match in Core.
+- **Forgetting Core `version.txt`** — `sync-r2.yml` runs on every Core push and overwrites R2's `version.txt` with whatever is in Core's root. If stale, R2 reverts to the old version after push.
 - **Stale scoop hash** — if you rebase Dashboard after computing the hash, recompute both.
 - **Pushing scoop before dashboard** — the scoop URL will 404 until the Dashboard commit exists on GitHub.
 - **Version not highest** — always check all three repos; they can drift independently.
