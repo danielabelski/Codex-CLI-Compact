@@ -1,3 +1,8 @@
+3.9.71
+- Added: --no-gitignore flag — skip appending .dual-graph/ to .gitignore
+- Added: --context-policy-file <path> flag — write dgc policy to custom path instead of CLAUDE.md (e.g. .claude/CLAUDE.md)
+- Added: --name/-n, --remote-control, --remote-control-session-name-prefix, --tmux, --plugin-url now correctly parsed as value flags
+
 3.9.70
 - Fixed: dgc audit and dg audit now correctly route to graperoot.audit (bin/dgc and bin/dg were missing audit subcommand handler)
 - Fixed: dual_graph_launch.sh audit fallback — tries ~/.dual-graph/venv before system python3

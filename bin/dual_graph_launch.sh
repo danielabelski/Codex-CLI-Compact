@@ -46,6 +46,8 @@ PROMPT=""
 CLAUDE_EXTRA_ARGS=()
 _PROJECT_SET=false
 FAILOVER_MODEL=""  # set by --model=codex|local|gemini|opencode
+NO_GITIGNORE=false
+CONTEXT_POLICY_FILE=""
 
 # ── Strip --model flag before Claude's own flag parser sees it ────────────────
 _FILTERED=()
@@ -58,6 +60,27 @@ for _fa in "$@"; do
   fi
 done
 [[ ${#_FILTERED[@]} -gt 0 ]] && set -- "${_FILTERED[@]}"
+
+# ── Strip dgc-specific flags before Claude's own flag parser sees them ─────────
+_FILTERED2=()
+_dgc_i=0
+_dgc_args=("$@")
+while (( _dgc_i < ${#_dgc_args[@]} )); do
+  _dgc_a="${_dgc_args[$_dgc_i]}"
+  if [[ "$_dgc_a" == "--no-gitignore" ]]; then
+    NO_GITIGNORE=true
+  elif [[ "$_dgc_a" == "--context-policy-file" ]]; then
+    (( _dgc_i++ )) || true
+    CONTEXT_POLICY_FILE="${_dgc_args[$_dgc_i]:-}"
+  elif [[ "$_dgc_a" == --context-policy-file=* ]]; then
+    CONTEXT_POLICY_FILE="${_dgc_a#--context-policy-file=}"
+  else
+    _FILTERED2+=("$_dgc_a")
+  fi
+  (( _dgc_i++ )) || true
+done
+[[ ${#_FILTERED2[@]} -gt 0 ]] && set -- "${_FILTERED2[@]}" || set --
+
 # Apply failover model override
 if [[ -n "$FAILOVER_MODEL" ]]; then
   case "$FAILOVER_MODEL" in
@@ -79,13 +102,14 @@ fi
 # 1. Single-value: always consume exactly the next argument
 _SINGLE_FLAGS=(--agent --agents --append-system-prompt --debug-file --effort
   --fallback-model --input-format --json-schema --max-budget-usd --model
-  --output-format --permission-mode --session-id --setting-sources --settings
-  --system-prompt)
+  --name --output-format --permission-mode --remote-control-session-name-prefix
+  --session-id --setting-sources --settings --system-prompt)
 # 2. Optional-value: peek — consume next arg only if it doesn't start with -
-_OPTIONAL_FLAGS=(--debug --from-pr --resume --worktree)
+_OPTIONAL_FLAGS=(--debug --from-pr --remote-control --resume --tmux --worktree)
 # 3. Variadic: consume all following non-flag args (e.g. --allowedTools Bash Edit Read)
 _VARIADIC_FLAGS=(--add-dir --allowedTools --allowed-tools --betas
-  --disallowedTools --disallowed-tools --file --mcp-config --plugin-dir --tools)
+  --disallowedTools --disallowed-tools --file --mcp-config --plugin-dir
+  --plugin-url --tools)
 
 _in_list() { local needle="$1"; shift; for v in "$@"; do [[ "$v" == "$needle" ]] && return 0; done; return 1; }
 
@@ -123,6 +147,11 @@ while (( $# > 0 )); do
         CLAUDE_EXTRA_ARGS+=("$1")
         shift
       fi
+      ;;
+    -n)
+      # -n/--name always takes a value
+      CLAUDE_EXTRA_ARGS+=("$1" "$2")
+      shift 2
       ;;
     -*)
       # Short flags (-p, -d, -v, -w, -c, -r, -h, etc.) — pass through
@@ -387,6 +416,12 @@ else
   DOC_FILE="$PROJECT/CLAUDE.md"
   DOC_NAME="CLAUDE.md"
   POLICY_MARKER="dgc-policy-v11"
+fi
+if [[ -n "$CONTEXT_POLICY_FILE" ]]; then
+  # Resolve relative to project root; create parent dir if needed
+  DOC_FILE="$PROJECT/$CONTEXT_POLICY_FILE"
+  DOC_NAME="$(basename "$CONTEXT_POLICY_FILE")"
+  mkdir -p "$(dirname "$DOC_FILE")"
 fi
 
 # ── Self-update ────────────────────────────────────────────────────────────────
@@ -776,12 +811,12 @@ echo ""
 mkdir -p "$DATA_DIR"
 mkdir -p "$RUN_DIR"
 
-if [[ -f "$PROJECT/.gitignore" ]] && ! grep -qx '.dual-graph/' "$PROJECT/.gitignore" 2>/dev/null; then
+if [[ "$NO_GITIGNORE" == false ]] && [[ -f "$PROJECT/.gitignore" ]] && ! grep -qx '.dual-graph/' "$PROJECT/.gitignore" 2>/dev/null; then
   echo '.dual-graph/' >> "$PROJECT/.gitignore"
   echo "[$TOOL_LABEL] Added .dual-graph/ to .gitignore"
 fi
 
-if [[ "$ASSISTANT" == "codex" ]] && [[ -f "$PROJECT/.gitignore" ]] && ! grep -qx '.dual-graph-context/' "$PROJECT/.gitignore" 2>/dev/null; then
+if [[ "$NO_GITIGNORE" == false ]] && [[ "$ASSISTANT" == "codex" ]] && [[ -f "$PROJECT/.gitignore" ]] && ! grep -qx '.dual-graph-context/' "$PROJECT/.gitignore" 2>/dev/null; then
   echo '.dual-graph-context/' >> "$PROJECT/.gitignore"
   echo "[$TOOL_LABEL] Added .dual-graph-context/ to .gitignore"
 fi
