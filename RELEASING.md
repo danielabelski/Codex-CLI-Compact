@@ -59,7 +59,12 @@ X.Y.Z
 
 ```
 
-Then copy to Core: `cp bin/changelog.txt ../Claude-CLI-Compact-core/changelog.txt`
+Then copy to Core:
+```bash
+cp bin/changelog.txt ../Claude-CLI-Compact-core/changelog.txt
+cp bin/dual_graph_launch.sh ../Claude-CLI-Compact-core/dual_graph_launch.sh
+```
+**Why:** `sync-r2.yml` in Core runs `aws s3 sync .` on every push — it overwrites R2's `dual_graph_launch.sh` with whatever is in the Core repo root. Always keep them in sync.
 
 The changelog is shown to users on auto-update. **Never push a version without updating it.**
 
@@ -325,6 +330,7 @@ Before releasing any change to `dual_graph_launch.sh` or `dgc.ps1`, verify:
 - **Shell variable in `--endpoint-url`** — pass the R2 URL as a literal string; a variable silently expands to empty.
 - **Forgetting `pyproject.toml`** — `__init__.py` and `pyproject.toml` versions must match in Core.
 - **Forgetting Core `version.txt`** — `sync-r2.yml` runs on every Core push and overwrites R2's `version.txt` with whatever is in Core's root. If stale, R2 reverts to the old version after push.
+- **Forgetting to copy `dual_graph_launch.sh` to Core** — same issue: `sync-r2.yml` syncs Core root to R2, overwriting R2's launcher with the stale Core copy on every push.
 - **Stale scoop hash** — if you rebase Dashboard after computing the hash, recompute both.
 - **Pushing scoop before dashboard** — the scoop URL will 404 until the Dashboard commit exists on GitHub.
 - **Version not highest** — always check all three repos; they can drift independently.
