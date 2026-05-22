@@ -1,3 +1,7 @@
+3.9.72
+- Fixed: graph_builder ran all regex (keywords, relations, symbols) on full 300KB content — now truncates to 24KB first; fixes 17+ min scan on large projects (12x speedup)
+- Added: SKIP_DIRS now includes out, .vercel, .turbo, coverage, .cache, storybook-static, .parcel-cache, .webpack, elm-stuff, .gradle, target
+
 3.9.71
 - Added: --no-gitignore flag — skip appending .dual-graph/ to .gitignore
 - Added: --context-policy-file <path> flag — write dgc policy to custom path instead of CLAUDE.md (e.g. .claude/CLAUDE.md)
