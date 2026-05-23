@@ -1,3 +1,8 @@
+3.9.73
+- Added: stdio MCP transport for Claude Code — eliminates port conflicts (no more "address already in use")
+- Fixed: Works with Docker/services on ports 8080/8081/8082 — Claude spawns MCP server directly via stdin/stdout
+- Added: Automatic fallback to HTTP for older Claude CLI versions (backward compatible)
+
 3.9.72
 - Fixed: graph_builder ran all regex (keywords, relations, symbols) on full 300KB content — now truncates to 24KB first; fixes 17+ min scan on large projects (12x speedup)
 - Added: SKIP_DIRS now includes out, .vercel, .turbo, coverage, .cache, storybook-static, .parcel-cache, .webpack, elm-stuff, .gradle, target

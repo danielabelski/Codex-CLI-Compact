@@ -1290,6 +1290,8 @@ rm -f "$_SCAN_ERR_FILE" 2>/dev/null || true
 echo "[$TOOL_LABEL] Scan complete."
 echo ""
 
+# HTTP server is always started — used by prime.sh hooks and non-Claude assistants.
+# For Claude with stdio, the MCP connection bypasses it (no port dependency).
 echo "[$TOOL_LABEL] Port    : $MCP_PORT"
 echo ""
 
@@ -1655,12 +1657,33 @@ elif [[ "$ASSISTANT" == "claude" ]]; then
   claude mcp remove dual-graph >/dev/null 2>&1 || true
   _MCP_REG_OK=0
   _MCP_REG_ERR=""
-  if _MCP_REG_ERR="$(claude mcp add --transport http dual-graph "http://127.0.0.1:$MCP_PORT/mcp" 2>&1)"; then
+
+  # Stdio mode: Claude Code spawns the MCP server directly — no port needed.
+  if [[ "$_GRAPEROOT_OK" == "1" ]]; then
+    _STDIO_CMD=("$VENV_BIN/mcp-graph-server" "--stdio")
+  else
+    _STDIO_CMD=("$PYTHON" "$SCRIPT_DIR/mcp_graph_server.py" "--stdio")
+  fi
+
+  if _MCP_REG_ERR="$(claude mcp add dual-graph \
+    -e DG_DATA_DIR="$DATA_DIR" \
+    -e DUAL_GRAPH_PROJECT_ROOT="$PROJECT" \
+    -- "${_STDIO_CMD[@]}" 2>&1)"; then
     _MCP_REG_OK=1
-  elif _MCP_REG_ERR="$(claude mcp add --transport sse dual-graph "http://127.0.0.1:$MCP_PORT/mcp" 2>&1)"; then
-    _MCP_REG_OK=1
-  elif _MCP_REG_ERR="$(claude mcp add dual-graph "http://127.0.0.1:$MCP_PORT/mcp" 2>&1)"; then
-    _MCP_REG_OK=1
+  fi
+
+  # Fallback: if stdio registration fails (old claude CLI), try HTTP
+  if [[ "$_MCP_REG_OK" != "1" ]]; then
+    if _MCP_REG_ERR="$(claude mcp add --transport http dual-graph "http://127.0.0.1:$MCP_PORT/mcp" 2>&1)"; then
+      _MCP_REG_OK=1
+      _CLAUDE_NEEDS_HTTP=1
+    elif _MCP_REG_ERR="$(claude mcp add --transport sse dual-graph "http://127.0.0.1:$MCP_PORT/mcp" 2>&1)"; then
+      _MCP_REG_OK=1
+      _CLAUDE_NEEDS_HTTP=1
+    elif _MCP_REG_ERR="$(claude mcp add dual-graph "http://127.0.0.1:$MCP_PORT/mcp" 2>&1)"; then
+      _MCP_REG_OK=1
+      _CLAUDE_NEEDS_HTTP=1
+    fi
   fi
 
   if [[ "$_MCP_REG_OK" != "1" ]]; then
@@ -1669,12 +1692,14 @@ elif [[ "$ASSISTANT" == "claude" ]]; then
     npm install -g @anthropic-ai/claude-code >/dev/null 2>&1 || true
     export PATH="$PATH:$(npm config get prefix 2>/dev/null)/bin"
     claude mcp remove dual-graph >/dev/null 2>&1 || true
-    if _MCP_REG_ERR="$(claude mcp add --transport http dual-graph "http://127.0.0.1:$MCP_PORT/mcp" 2>&1)"; then
+    if _MCP_REG_ERR="$(claude mcp add dual-graph \
+      -e DG_DATA_DIR="$DATA_DIR" \
+      -e DUAL_GRAPH_PROJECT_ROOT="$PROJECT" \
+      -- "${_STDIO_CMD[@]}" 2>&1)"; then
       _MCP_REG_OK=1
-    elif _MCP_REG_ERR="$(claude mcp add --transport sse dual-graph "http://127.0.0.1:$MCP_PORT/mcp" 2>&1)"; then
+    elif _MCP_REG_ERR="$(claude mcp add --transport http dual-graph "http://127.0.0.1:$MCP_PORT/mcp" 2>&1)"; then
       _MCP_REG_OK=1
-    elif _MCP_REG_ERR="$(claude mcp add dual-graph "http://127.0.0.1:$MCP_PORT/mcp" 2>&1)"; then
-      _MCP_REG_OK=1
+      _CLAUDE_NEEDS_HTTP=1
     fi
   fi
 
@@ -1688,7 +1713,12 @@ elif [[ "$ASSISTANT" == "claude" ]]; then
     _send_cli_error "Registering MCP" "MCP registration failed after auto-fix (claude): $_MCP_REG_ERR"
     exit 1
   fi
-  echo "[$TOOL_LABEL] MCP config updated -> http://127.0.0.1:$MCP_PORT/mcp"
+
+  if [[ "${_CLAUDE_NEEDS_HTTP:-}" == "1" ]]; then
+    echo "[$TOOL_LABEL] MCP config updated -> http://127.0.0.1:$MCP_PORT/mcp (HTTP fallback)"
+  else
+    echo "[$TOOL_LABEL] MCP config updated -> stdio (no port needed)"
+  fi
 
   # ── Token Counter MCP (global user scope — works in all projects) ────────
   # Kill any leftover token-counter-mcp process so it can reclaim port 8899

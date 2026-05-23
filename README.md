@@ -1,6 +1,6 @@
 # GrapeRoot — Compounding Context for AI Coding Assistants
 
-**[graperoot.dev](https://graperoot.dev)** · [Docs](https://graperoot.dev/docs) · [Benchmarks](https://graperoot.dev/benchmarks) · [Pro](https://graperoot.dev/graperoot-pro) · [Discord](https://discord.com/invite/YwKdQATY2d)
+**[graperoot.dev](https://graperoot.dev)** · [Docs](https://graperoot.dev/docs) · [Benchmarks](https://graperoot.dev/benchmarks) · [Pro](https://graperoot.dev/graperoot-pro) · [Discord](https://discord.com/invite/YwKdQATY2d) · [Troubleshooting](./TROUBLESHOOTING.md)
 
 A context engine that makes Claude Code, Codex CLI, Gemini CLI, Cursor, OpenCode, and GitHub Copilot **30-45% cheaper** without sacrificing quality. It builds a semantic graph of your codebase and pre-loads the right files into every prompt — so your AI spends tokens reasoning, not exploring.
 
@@ -69,6 +69,8 @@ scoop install dual-graph
 ---
 
 ## Usage
+
+> **⚠️ Important:** Always use `dgc` (not `claude` directly) to ensure the MCP server is running. Running `claude` alone will result in "MCP Server Connection Failed" errors.
 
 ### Claude Code (`dgc`)
 
@@ -196,7 +198,79 @@ get_session_stats()                  # running session cost
 
 The launcher checks for updates on every run and auto-updates if a new version is available. No manual intervention needed.
 
-Current version: **3.9.72**
+Current version: **3.9.73**
+
+---
+
+## Troubleshooting
+
+### "MCP Server Connection Failed" or "HTTP 404: Not Found"
+
+**Cause:** The dual-graph MCP server isn't running. This happens when running `claude` directly instead of through `dgc`.
+
+**Solution:** Always use `dgc` instead of `claude`:
+
+```bash
+# ❌ Don't run:
+claude
+
+# ✅ Run this:
+dgc
+dgc /path/to/project
+```
+
+The `dgc` launcher automatically starts the MCP server and registers it with Claude Code.
+
+**If the error persists:**
+
+1. **Clean up stale configs:**
+   ```bash
+   claude mcp remove dual-graph
+   claude mcp remove token-counter --scope user
+   ```
+
+2. **Run dgc again** (it will re-register automatically):
+   ```bash
+   dgc
+   ```
+
+3. **Check if the server started:**
+   ```bash
+   # Verify MCP server is running:
+   lsof -i :8080-8099 | grep python
+   
+   # Check logs:
+   cat .dual-graph/run/claude/mcp_server.log
+   ```
+
+4. **Fresh install** (if nothing else works):
+   ```bash
+   rm -rf ~/.dual-graph
+   claude mcp remove dual-graph 2>/dev/null
+   curl -sSL https://raw.githubusercontent.com/kunal12203/Codex-CLI-Compact/main/install.sh | bash
+   source ~/.zshrc  # or ~/.bashrc
+   ```
+
+### MCP Server Won't Start
+
+**Check the logs:**
+```bash
+cat .dual-graph/run/claude/mcp_server.log
+```
+
+**Common issues:**
+- **Port already in use:** Set a custom port with `DG_MCP_PORT=8090 dgc`
+- **Python dependencies missing:** Re-run installer or `pip install graperoot mcp uvicorn --upgrade`
+- **Permission errors:** Check file permissions in `.dual-graph/`
+
+### Session-Specific Issues
+
+**Resume not working?** The MCP server is session-based — it stops when you exit. To resume with dual-graph:
+```bash
+dgc --resume <session-id>
+```
+
+**Context not persisting?** Check if `.dual-graph/context-store.json` exists and is writable.
 
 ---
 
