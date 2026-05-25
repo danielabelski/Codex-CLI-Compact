@@ -1912,49 +1912,6 @@ PY
     echo "[$TOOL_LABEL] MCP config updated -> stdio (no port needed)"
   fi
 
-  # Write the correct dual-graph entry into the project's .mcp.json so it
-  # persists across sessions and overrides any stale HTTP / graperoot-pro entries.
-  if [[ "${_CLAUDE_NEEDS_HTTP:-}" == "1" ]]; then
-    _MCP_JSON_CMD="[\"$VENV_BIN/mcp-graph-server\", \"--stdio\"]"
-    if [[ "$_GRAPEROOT_OK" != "1" ]]; then
-      _MCP_JSON_CMD="[\"$PYTHON\", \"$SCRIPT_DIR/mcp_graph_server.py\", \"--stdio\"]"
-    fi
-  else
-    if [[ "$_GRAPEROOT_OK" == "1" ]]; then
-      _MCP_JSON_CMD="[\"$VENV_BIN/mcp-graph-server\", \"--stdio\"]"
-    else
-      _MCP_JSON_CMD="[\"$PYTHON\", \"$SCRIPT_DIR/mcp_graph_server.py\", \"--stdio\"]"
-    fi
-  fi
-  "$PYTHON" - "$_PROJECT_MCP_JSON" "$VENV_BIN/mcp-graph-server" "$PYTHON" "$SCRIPT_DIR/mcp_graph_server.py" "$DATA_DIR" "${_CLAUDE_NEEDS_HTTP:-0}" "$MCP_PORT" "$_GRAPEROOT_OK" <<'PY'
-import json, sys, os
-f, venv_cmd, python, script_cmd, data_dir, needs_http, port, gr_ok = sys.argv[1:]
-try:
-    with open(f) as fh:
-        cfg = json.load(fh)
-except Exception:
-    cfg = {}
-servers = cfg.get("mcpServers", {})
-# Remove stale entries
-for k in list(servers.keys()):
-    if k in ("graperoot-pro",):
-        del servers[k]
-if needs_http == "1":
-    servers["dual-graph"] = {"type": "http", "url": f"http://127.0.0.1:{port}/mcp"}
-else:
-    cmd = venv_cmd if gr_ok == "1" else f"{python} {script_cmd}"
-    cmd_list = cmd.split()
-    servers["dual-graph"] = {
-        "type": "stdio",
-        "command": cmd_list[0],
-        "args": cmd_list[1:] + ["--stdio"],
-        "env": {"DG_DATA_DIR": data_dir}
-    }
-cfg["mcpServers"] = servers
-with open(f, "w") as fh:
-    json.dump(cfg, fh, indent=2)
-    fh.write("\n")
-PY
 
   # ── Token Counter MCP (global user scope — works in all projects) ────────
   # Kill any leftover token-counter-mcp process so it can reclaim port 8899
