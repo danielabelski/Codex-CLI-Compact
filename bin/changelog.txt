@@ -1,3 +1,8 @@
+3.9.76
+- Fixed: "MCP server dual-graph already exists in local config" error on repeated dgc runs
+- Fixed: Stale .mcp.json entries (graperoot-pro, old HTTP dual-graph) now cleaned up automatically on every dgc launch
+- Fixed: .mcp.json always written with correct stdio config after Claude MCP registration
+
 3.9.75
 - Fixed: dgc --leaderboard re-prompted even when already opted in — now shows update flow only
 - Fixed: wrong license server URL in leaderboard + ping blocks (was graperoot-license, now correct)
