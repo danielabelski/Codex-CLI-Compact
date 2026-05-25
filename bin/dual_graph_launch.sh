@@ -9,6 +9,128 @@ set -Eeuo pipefail
 ASSISTANT="${1:-}"
 ASSISTANT="${ASSISTANT#--}"   # strip leading -- so --claude == claude
 
+# ── leaderboard shortcut: dgc --leaderboard ───────────────────────────────────
+# Intercept before main arg parsing so the rest of the launcher doesn't run
+if [[ "$ASSISTANT" == "claude" ]]; then
+  for _early_arg in "${@:2}"; do
+    if [[ "$_early_arg" == "--leaderboard" ]]; then
+      ASSISTANT="leaderboard"
+      break
+    fi
+  done
+fi
+# ──────────────────────────────────────────────────────────────────────────────
+
+# ── leaderboard subcommand (dgc only) ─────────────────────────────────────────
+if [[ "$ASSISTANT" == "leaderboard" ]]; then
+  _LEADERBOARD_LICENSE_SERVER="${DG_LICENSE_SERVER:-https://graperoot-license.up.railway.app}"
+  # Find identity.json — try script dir, then common install locations
+  _LEADERBOARD_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+  _LEADERBOARD_IDENTITY_FILE="$_LEADERBOARD_SCRIPT_DIR/identity.json"
+  [[ ! -f "$_LEADERBOARD_IDENTITY_FILE" ]] && _LEADERBOARD_IDENTITY_FILE="$HOME/.dual-graph/bin/identity.json"
+  [[ ! -f "$_LEADERBOARD_IDENTITY_FILE" ]] && _LEADERBOARD_IDENTITY_FILE="$HOME/.graperoot/bin/identity.json"
+  _LEADERBOARD_OPTED_FILE="$HOME/.dual-graph/leaderboard_opted_in"
+
+  _mid=$(python3 -c "
+import json, sys
+from pathlib import Path
+p = Path(sys.argv[1])
+if p.exists():
+    d = json.loads(p.read_text())
+    print(d.get('machine_id',''))
+else:
+    print('')
+" "$_LEADERBOARD_IDENTITY_FILE" 2>/dev/null || echo "")
+
+  _current_alias=$(python3 -c "
+import json, sys
+from pathlib import Path
+p = Path(sys.argv[1])
+if p.exists():
+    d = json.loads(p.read_text())
+    print(d.get('alias',''))
+else:
+    print('')
+" "$_LEADERBOARD_OPTED_FILE" 2>/dev/null || echo "")
+
+  _current_opt=$(python3 -c "
+import json, sys
+from pathlib import Path
+p = Path(sys.argv[1])
+if p.exists():
+    d = json.loads(p.read_text())
+    print(d.get('opt_in','no'))
+else:
+    print('not_set')
+" "$_LEADERBOARD_OPTED_FILE" 2>/dev/null || echo "not_set")
+
+  echo ""
+  echo "[dgc] Leaderboard settings"
+  echo "[dgc] Current status: opt_in=$_current_opt  alias='$_current_alias'"
+  echo "[dgc] Leaderboard URL: https://graperoot.dev/leaderboard"
+  echo ""
+  if [[ ! -t 0 ]]; then
+    echo "[dgc] No terminal — run dgc --leaderboard interactively to update settings."
+    exit 0
+  fi
+  printf "[dgc] Opt in to the leaderboard? (y/n, Enter to skip): "
+  read -r -t 30 _lb_ans 2>/dev/null || _lb_ans=""
+  if [[ "$_lb_ans" =~ ^[Yy] ]]; then
+    printf "[dgc] Display name (leave blank to keep '%s'): " "$_current_alias"
+    read -r -t 30 _lb_name 2>/dev/null || _lb_name=""
+    [[ -z "$_lb_name" && -n "$_current_alias" ]] && _lb_name="$_current_alias"
+    if [[ -z "$_lb_name" ]]; then
+      printf "[dgc] Enter a display name: "
+      read -r -t 30 _lb_name 2>/dev/null || _lb_name="anonymous"
+    fi
+    [[ -z "$_lb_name" ]] && _lb_name="anonymous"
+    # Save locally
+    python3 -c "
+import json, sys
+from pathlib import Path
+p = Path(sys.argv[1])
+p.parent.mkdir(parents=True, exist_ok=True)
+p.write_text(json.dumps({'opt_in':'yes','alias':sys.argv[2]}))
+" "$_LEADERBOARD_OPTED_FILE" "$_lb_name" 2>/dev/null || true
+    # POST to server
+    if [[ -n "$_mid" ]]; then
+      _lb_resp=$(curl -sf -X POST "$_LEADERBOARD_LICENSE_SERVER/set-alias" \
+        -H "Content-Type: application/json" \
+        -d "{\"machine_id\":\"$_mid\",\"alias\":\"$_lb_name\",\"opt_in\":true}" \
+        --max-time 5 2>/dev/null || echo "")
+      if echo "$_lb_resp" | python3 -c "import json,sys; d=json.load(sys.stdin); sys.exit(0 if d.get('ok') else 1)" 2>/dev/null; then
+        echo "[dgc] You're on the leaderboard as '$_lb_name'! View: https://graperoot.dev/leaderboard"
+      else
+        echo "[dgc] Saved locally (server unreachable — will sync on next dgc run)."
+      fi
+    fi
+  elif [[ "$_lb_ans" =~ ^[Nn] ]]; then
+    python3 -c "
+import json, sys
+from pathlib import Path
+p = Path(sys.argv[1])
+p.parent.mkdir(parents=True, exist_ok=True)
+d = {}
+if p.exists():
+    try: d = json.loads(p.read_text())
+    except: pass
+d['opt_in'] = 'no'
+p.write_text(json.dumps(d))
+" "$_LEADERBOARD_OPTED_FILE" 2>/dev/null || true
+    if [[ -n "$_mid" ]]; then
+      curl -sf -X POST "$_LEADERBOARD_LICENSE_SERVER/set-alias" \
+        -H "Content-Type: application/json" \
+        -d "{\"machine_id\":\"$_mid\",\"alias\":\"\",\"opt_in\":false}" \
+        --max-time 5 >/dev/null 2>&1 || true
+    fi
+    echo "[dgc] Opted out. Run 'dgc --leaderboard' anytime to opt back in."
+  else
+    echo "[dgc] No change."
+  fi
+  echo ""
+  exit 0
+fi
+
 # ── audit subcommand ──────────────────────────────────────────────────────────
 if [[ "$ASSISTANT" == "audit" ]]; then
   shift
@@ -26,7 +148,8 @@ if [[ "$ASSISTANT" == "audit" ]]; then
 fi
 
 if [[ "$ASSISTANT" != "codex" && "$ASSISTANT" != "claude" && "$ASSISTANT" != "cursor" \
-   && "$ASSISTANT" != "gemini" && "$ASSISTANT" != "opencode" && "$ASSISTANT" != "copilot" ]]; then
+   && "$ASSISTANT" != "gemini" && "$ASSISTANT" != "opencode" && "$ASSISTANT" != "copilot" \
+   && "$ASSISTANT" != "leaderboard" ]]; then
   echo "Usage: $0 <codex|claude|cursor|gemini|opencode|copilot> [project_path] [prompt]" >&2
   echo "       $0 audit [project_path]   — vibe code health report" >&2
   exit 2
@@ -69,6 +192,8 @@ while (( _dgc_i < ${#_dgc_args[@]} )); do
   _dgc_a="${_dgc_args[$_dgc_i]}"
   if [[ "$_dgc_a" == "--no-gitignore" ]]; then
     NO_GITIGNORE=true
+  elif [[ "$_dgc_a" == "--leaderboard" ]]; then
+    : # already handled early above — just drop this flag
   elif [[ "$_dgc_a" == "--context-policy-file" ]]; then
     (( _dgc_i++ )) || true
     CONTEXT_POLICY_FILE="${_dgc_args[$_dgc_i]:-}"
@@ -1994,6 +2119,124 @@ if [[ ! -f "$_FEEDBACK_MARKER" ]] && [[ -t 0 ]] && [[ "$(_get_telemetry_consent)
   fi
   date +%Y-%m-%d > "$_FEEDBACK_MARKER" 2>/dev/null || true
   echo ""
+fi
+# ──────────────────────────────────────────────────────────────────────────────
+
+# ── Leaderboard opt-in prompt (dgc / claude only, one-time) ──────────────────
+if [[ "$ASSISTANT" == "claude" ]]; then
+  _LB_OPTED_FILE="$HOME/.dual-graph/leaderboard_opted_in"
+  _LB_LICENSE_SERVER="${DG_LICENSE_SERVER:-https://graperoot-license.up.railway.app}"
+  if [[ ! -f "$_LB_OPTED_FILE" ]] && [[ -t 0 ]]; then
+    echo ""
+    echo "[$TOOL_LABEL] Want to appear on the graperoot leaderboard?"
+    echo "[$TOOL_LABEL] It shows how many tokens you've saved. Only your chosen name is shared."
+    echo "[$TOOL_LABEL] View: https://graperoot.dev/leaderboard"
+    printf "[$TOOL_LABEL] Opt in? (y/N): "
+    read -r -t 20 _lb_opt_ans 2>/dev/null || _lb_opt_ans=""
+    if [[ "$_lb_opt_ans" =~ ^[Yy] ]]; then
+      printf "[$TOOL_LABEL] Display name (shown publicly): "
+      read -r -t 30 _lb_opt_name 2>/dev/null || _lb_opt_name=""
+      [[ -z "$_lb_opt_name" ]] && _lb_opt_name="anonymous"
+      _lb_mid="$(_machine_id)"
+      python3 -c "
+import json, sys
+from pathlib import Path
+p = Path(sys.argv[1])
+p.parent.mkdir(parents=True, exist_ok=True)
+p.write_text(json.dumps({'opt_in':'yes','alias':sys.argv[2]}))
+" "$_LB_OPTED_FILE" "$_lb_opt_name" 2>/dev/null || true
+      if [[ -n "$_lb_mid" ]]; then
+        (curl -sf -X POST "$_LB_LICENSE_SERVER/set-alias" \
+          -H "Content-Type: application/json" \
+          -d "{\"machine_id\":\"$_lb_mid\",\"alias\":\"$_lb_opt_name\",\"opt_in\":true}" \
+          --max-time 5 >/dev/null 2>&1 || true) &
+      fi
+      echo "[$TOOL_LABEL] You're on the leaderboard as '$_lb_opt_name'!"
+    else
+      python3 -c "
+import json, sys
+from pathlib import Path
+p = Path(sys.argv[1])
+p.parent.mkdir(parents=True, exist_ok=True)
+p.write_text(json.dumps({'opt_in':'no'}))
+" "$_LB_OPTED_FILE" 2>/dev/null || true
+      echo "[$TOOL_LABEL] Skipped. Run 'dgc --leaderboard' anytime to opt in later."
+    fi
+    echo ""
+  fi
+
+  # ── Send token telemetry in ping (dgc only) ─────────────────────────────────
+  _LB_MID="$(_machine_id)"
+  _TOKEN_LOG="$HOME/.dual-graph/token_usage.jsonl"
+  if [[ -n "$_LB_MID" ]] && [[ -f "$_TOKEN_LOG" ]]; then
+    _TOKEN_PAYLOAD=$(python3 - "$_TOKEN_LOG" 2>/dev/null << 'TKPY'
+import json, sys
+from pathlib import Path
+
+def model_key(model: str) -> str:
+    m = (model or "").lower()
+    if "opus" in m:   return "claude-opus"
+    if "sonnet" in m: return "claude-sonnet"
+    if "haiku" in m:  return "claude-haiku"
+    return "claude-sonnet"  # default
+
+totals = {}
+for line in Path(sys.argv[1]).read_text(encoding="utf-8").splitlines():
+    line = line.strip()
+    if not line:
+        continue
+    try:
+        e = json.loads(line)
+    except Exception:
+        continue
+    mkey = model_key(e.get("model", ""))
+    if mkey not in totals:
+        totals[mkey] = {"input": 0, "output": 0, "cache_write": 0, "cache_read": 0, "cost_usd": 0.0}
+    totals[mkey]["input"]       += int(e.get("input_tokens", 0))
+    totals[mkey]["output"]      += int(e.get("output_tokens", 0))
+    totals[mkey]["cache_write"] += int(e.get("cache_creation_input_tokens", 0))
+    totals[mkey]["cache_read"]  += int(e.get("cache_read_input_tokens", 0))
+    totals[mkey]["cost_usd"]    += float(e.get("cost_usd", 0.0))
+
+grand_input = grand_output = grand_cache_write = grand_cache_read = 0
+grand_cost = 0.0
+by_model = {}
+for mkey, t in totals.items():
+    by_model[mkey] = {
+        "input_tokens":       t["input"],
+        "output_tokens":      t["output"],
+        "cache_write_tokens": t["cache_write"],
+        "cache_read_tokens":  t["cache_read"],
+        "cost_usd":           round(t["cost_usd"], 6),
+    }
+    grand_input       += t["input"]
+    grand_output      += t["output"]
+    grand_cache_write += t["cache_write"]
+    grand_cache_read  += t["cache_read"]
+    grand_cost        += t["cost_usd"]
+
+if grand_input == 0:
+    sys.exit(0)
+
+print(json.dumps({
+    "input_tokens":       grand_input,
+    "output_tokens":      grand_output,
+    "cache_write_tokens": grand_cache_write,
+    "cache_read_tokens":  grand_cache_read,
+    "cost_usd":           round(grand_cost, 6),
+    "by_model":           by_model,
+}))
+TKPY
+    )
+    if [[ -n "$_TOKEN_PAYLOAD" ]]; then
+      _PING_BODY="{\"machine_id\":\"$_LB_MID\",\"platform\":\"$(_platform_name)\",\"tool\":\"dgc\",\"token_totals\":$_TOKEN_PAYLOAD}"
+      (curl -sf -X POST "$_LB_LICENSE_SERVER/ping" \
+        -H "Content-Type: application/json" \
+        -d "$_PING_BODY" \
+        --max-time 5 >/dev/null 2>&1 || true) &
+    fi
+  fi
+  # ────────────────────────────────────────────────────────────────────────────
 fi
 # ──────────────────────────────────────────────────────────────────────────────
 

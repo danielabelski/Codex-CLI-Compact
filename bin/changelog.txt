@@ -1,3 +1,8 @@
+3.9.74
+- Added: Public leaderboard (graperoot.dev/leaderboard) — opt in with `dgc --leaderboard`, shows real token usage and cost per user
+- Added: Token telemetry in dgc ping — sends input/output/cache_write/cache_read tokens + cost_usd per model on every run
+- Added: GET /leaderboard API on license server returns live ranked table of opted-in users
+
 3.9.73
 - Added: stdio MCP transport for Claude Code — eliminates port conflicts (no more "address already in use")
 - Fixed: Works with Docker/services on ports 8080/8081/8082 — Claude spawns MCP server directly via stdin/stdout
