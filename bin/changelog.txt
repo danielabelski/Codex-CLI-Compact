@@ -1,3 +1,7 @@
+3.9.78
+- Fixed: stdio MCP transport broken when invoked as console script (mcp-graph-server --stdio) — was starting HTTP server instead
+- Fixed: dual-graph stuck on "connecting" in Claude Code is now resolved
+
 3.9.77
 - Fixed: dual-graph MCP stuck on "connecting" — no longer writes to .mcp.json (avoids conflict with claude mcp add)
 - Fixed: pre-cleanup still strips stale graperoot-pro/dual-graph entries from .mcp.json before registration
