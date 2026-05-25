@@ -23,7 +23,7 @@ fi
 
 # ── leaderboard subcommand (dgc only) ─────────────────────────────────────────
 if [[ "$ASSISTANT" == "leaderboard" ]]; then
-  _LEADERBOARD_LICENSE_SERVER="${DG_LICENSE_SERVER:-https://graperoot-license.up.railway.app}"
+  _LEADERBOARD_LICENSE_SERVER="${DG_LICENSE_SERVER:-https://dual-graph-license-production.up.railway.app}"
   # Find identity.json — try script dir, then common install locations
   _LEADERBOARD_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
   _LEADERBOARD_IDENTITY_FILE="$_LEADERBOARD_SCRIPT_DIR/identity.json"
@@ -73,59 +73,102 @@ else:
     echo "[dgc] No terminal — run dgc --leaderboard interactively to update settings."
     exit 0
   fi
-  printf "[dgc] Opt in to the leaderboard? (y/n, Enter to skip): "
-  read -r -t 30 _lb_ans 2>/dev/null || _lb_ans=""
-  if [[ "$_lb_ans" =~ ^[Yy] ]]; then
-    printf "[dgc] Display name (leave blank to keep '%s'): " "$_current_alias"
-    read -r -t 30 _lb_name 2>/dev/null || _lb_name=""
-    [[ -z "$_lb_name" && -n "$_current_alias" ]] && _lb_name="$_current_alias"
-    if [[ -z "$_lb_name" ]]; then
-      printf "[dgc] Enter a display name: "
-      read -r -t 30 _lb_name 2>/dev/null || _lb_name="anonymous"
+
+  # If already opted in, just offer to update alias or opt out — don't re-ask
+  if [[ "$_current_opt" == "yes" ]]; then
+    printf "[dgc] Change display name (Enter to keep '%s', 'n' to opt out): " "$_current_alias"
+    read -r -t 30 _lb_ans 2>/dev/null || _lb_ans=""
+    if [[ "$_lb_ans" =~ ^[Nn]$ ]]; then
+      # opt out
+      python3 -c "
+import json, sys
+from pathlib import Path
+p = Path(sys.argv[1])
+d = json.loads(p.read_text()) if p.exists() else {}
+d['opt_in'] = 'no'
+p.write_text(json.dumps(d))
+" "$_LEADERBOARD_OPTED_FILE" 2>/dev/null || true
+      if [[ -n "$_mid" ]]; then
+        curl -sf -X POST "$_LEADERBOARD_LICENSE_SERVER/set-alias" \
+          -H "Content-Type: application/json" \
+          -d "{\"machine_id\":\"$_mid\",\"alias\":\"\",\"opt_in\":false}" \
+          --max-time 5 >/dev/null 2>&1 || true
+      fi
+      echo "[dgc] Opted out. Run 'dgc --leaderboard' anytime to opt back in."
+    elif [[ -n "$_lb_ans" ]]; then
+      # update alias
+      _lb_name="$_lb_ans"
+      python3 -c "
+import json, sys
+from pathlib import Path
+p = Path(sys.argv[1])
+p.write_text(json.dumps({'opt_in':'yes','alias':sys.argv[2]}))
+" "$_LEADERBOARD_OPTED_FILE" "$_lb_name" 2>/dev/null || true
+      if [[ -n "$_mid" ]]; then
+        _lb_resp=$(curl -sf -X POST "$_LEADERBOARD_LICENSE_SERVER/set-alias" \
+          -H "Content-Type: application/json" \
+          -d "{\"machine_id\":\"$_mid\",\"alias\":\"$_lb_name\",\"opt_in\":true}" \
+          --max-time 5 2>/dev/null || echo "")
+        if echo "$_lb_resp" | python3 -c "import json,sys; d=json.load(sys.stdin); sys.exit(0 if d.get('ok') else 1)" 2>/dev/null; then
+          echo "[dgc] Updated! You're on the leaderboard as '$_lb_name'. View: https://graperoot.dev/leaderboard"
+        else
+          echo "[dgc] Saved locally (will sync on next dgc run)."
+        fi
+      fi
+    else
+      # Enter with no input — keep existing, but re-sync to server in case it was missed
+      if [[ -n "$_mid" && -n "$_current_alias" ]]; then
+        _lb_resp=$(curl -sf -X POST "$_LEADERBOARD_LICENSE_SERVER/set-alias" \
+          -H "Content-Type: application/json" \
+          -d "{\"machine_id\":\"$_mid\",\"alias\":\"$_current_alias\",\"opt_in\":true}" \
+          --max-time 5 2>/dev/null || echo "")
+        if echo "$_lb_resp" | python3 -c "import json,sys; d=json.load(sys.stdin); sys.exit(0 if d.get('ok') else 1)" 2>/dev/null; then
+          echo "[dgc] You're on the leaderboard as '$_current_alias'. View: https://graperoot.dev/leaderboard"
+        else
+          echo "[dgc] No change."
+        fi
+      else
+        echo "[dgc] No change."
+      fi
     fi
-    [[ -z "$_lb_name" ]] && _lb_name="anonymous"
-    # Save locally
-    python3 -c "
+  else
+    # Not yet opted in — run the first-time flow
+    printf "[dgc] Opt in to the leaderboard? (y/n, Enter to skip): "
+    read -r -t 30 _lb_ans 2>/dev/null || _lb_ans=""
+    if [[ "$_lb_ans" =~ ^[Yy] ]]; then
+      printf "[dgc] Display name (leave blank for 'anonymous'): "
+      read -r -t 30 _lb_name 2>/dev/null || _lb_name=""
+      [[ -z "$_lb_name" ]] && _lb_name="anonymous"
+      python3 -c "
 import json, sys
 from pathlib import Path
 p = Path(sys.argv[1])
 p.parent.mkdir(parents=True, exist_ok=True)
 p.write_text(json.dumps({'opt_in':'yes','alias':sys.argv[2]}))
 " "$_LEADERBOARD_OPTED_FILE" "$_lb_name" 2>/dev/null || true
-    # POST to server
-    if [[ -n "$_mid" ]]; then
-      _lb_resp=$(curl -sf -X POST "$_LEADERBOARD_LICENSE_SERVER/set-alias" \
-        -H "Content-Type: application/json" \
-        -d "{\"machine_id\":\"$_mid\",\"alias\":\"$_lb_name\",\"opt_in\":true}" \
-        --max-time 5 2>/dev/null || echo "")
-      if echo "$_lb_resp" | python3 -c "import json,sys; d=json.load(sys.stdin); sys.exit(0 if d.get('ok') else 1)" 2>/dev/null; then
-        echo "[dgc] You're on the leaderboard as '$_lb_name'! View: https://graperoot.dev/leaderboard"
-      else
-        echo "[dgc] Saved locally (server unreachable — will sync on next dgc run)."
+      if [[ -n "$_mid" ]]; then
+        _lb_resp=$(curl -sf -X POST "$_LEADERBOARD_LICENSE_SERVER/set-alias" \
+          -H "Content-Type: application/json" \
+          -d "{\"machine_id\":\"$_mid\",\"alias\":\"$_lb_name\",\"opt_in\":true}" \
+          --max-time 5 2>/dev/null || echo "")
+        if echo "$_lb_resp" | python3 -c "import json,sys; d=json.load(sys.stdin); sys.exit(0 if d.get('ok') else 1)" 2>/dev/null; then
+          echo "[dgc] You're on the leaderboard as '$_lb_name'! View: https://graperoot.dev/leaderboard"
+        else
+          echo "[dgc] Saved locally (will sync on next dgc run)."
+        fi
       fi
-    fi
-  elif [[ "$_lb_ans" =~ ^[Nn] ]]; then
-    python3 -c "
+    elif [[ "$_lb_ans" =~ ^[Nn] ]]; then
+      python3 -c "
 import json, sys
 from pathlib import Path
 p = Path(sys.argv[1])
 p.parent.mkdir(parents=True, exist_ok=True)
-d = {}
-if p.exists():
-    try: d = json.loads(p.read_text())
-    except: pass
-d['opt_in'] = 'no'
-p.write_text(json.dumps(d))
+p.write_text(json.dumps({'opt_in':'no','alias':''}))
 " "$_LEADERBOARD_OPTED_FILE" 2>/dev/null || true
-    if [[ -n "$_mid" ]]; then
-      curl -sf -X POST "$_LEADERBOARD_LICENSE_SERVER/set-alias" \
-        -H "Content-Type: application/json" \
-        -d "{\"machine_id\":\"$_mid\",\"alias\":\"\",\"opt_in\":false}" \
-        --max-time 5 >/dev/null 2>&1 || true
+      echo "[dgc] Opted out. Run 'dgc --leaderboard' anytime to opt back in."
+    else
+      echo "[dgc] No change."
     fi
-    echo "[dgc] Opted out. Run 'dgc --leaderboard' anytime to opt back in."
-  else
-    echo "[dgc] No change."
   fi
   echo ""
   exit 0
@@ -2125,7 +2168,7 @@ fi
 # ── Leaderboard opt-in prompt (dgc / claude only, one-time) ──────────────────
 if [[ "$ASSISTANT" == "claude" ]]; then
   _LB_OPTED_FILE="$HOME/.dual-graph/leaderboard_opted_in"
-  _LB_LICENSE_SERVER="${DG_LICENSE_SERVER:-https://graperoot-license.up.railway.app}"
+  _LB_LICENSE_SERVER="${DG_LICENSE_SERVER:-https://dual-graph-license-production.up.railway.app}"
   if [[ ! -f "$_LB_OPTED_FILE" ]] && [[ -t 0 ]]; then
     echo ""
     echo "[$TOOL_LABEL] Want to appear on the graperoot leaderboard?"

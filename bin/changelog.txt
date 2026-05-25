@@ -1,3 +1,7 @@
+3.9.75
+- Fixed: dgc --leaderboard re-prompted even when already opted in — now shows update flow only
+- Fixed: wrong license server URL in leaderboard + ping blocks (was graperoot-license, now correct)
+
 3.9.74
 - Added: Public leaderboard (graperoot.dev/leaderboard) — opt in with `dgc --leaderboard`, shows real token usage and cost per user
 - Added: Token telemetry in dgc ping — sends input/output/cache_write/cache_read tokens + cost_usd per model on every run
