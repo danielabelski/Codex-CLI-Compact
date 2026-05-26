@@ -1,3 +1,6 @@
+3.9.82
+- Fixed: Active hours now accumulate via MCP heartbeat — each 15-min ping credits 900s directly to NeonDB, no SQLite dependency
+
 3.9.81
 - Fixed: Active hours now tracked on leaderboard — end-of-session ping sent from stop.sh
 - Fixed: License server token update was silently failing (wrong INSERT approach) — now uses plain UPDATE
