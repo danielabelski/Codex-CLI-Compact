@@ -1643,6 +1643,22 @@ PYEOF
       >/dev/null 2>&1 || true
   fi
 fi
+# Send end-of-session ping to license server so active hours are logged
+_LB_MID_STOP=\$(python3 - "\$HOME/.dual-graph/identity.json" 2>/dev/null <<'MIDPY'
+import json, sys
+from pathlib import Path
+p = Path(sys.argv[1])
+if p.exists():
+    d = json.loads(p.read_text())
+    print(d.get("machine_id", ""))
+MIDPY
+)
+if [[ -n "\$_LB_MID_STOP" ]]; then
+  curl -sf -X POST "${_LB_LICENSE_SERVER:-https://dual-graph-license-production.up.railway.app}/ping" \
+    -H "Content-Type: application/json" \
+    -d "{\"machine_id\":\"\$_LB_MID_STOP\",\"platform\":\"macos\",\"tool\":\"dgc\"}" \
+    --max-time 5 >/dev/null 2>&1 || true
+fi
 exit 0
 STOPEOF
   chmod +x "$DATA_DIR/stop.sh"

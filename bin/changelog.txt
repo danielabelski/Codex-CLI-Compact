@@ -1,3 +1,7 @@
+3.9.81
+- Fixed: Active hours now tracked on leaderboard — end-of-session ping sent from stop.sh
+- Fixed: License server token update was silently failing (wrong INSERT approach) — now uses plain UPDATE
+
 3.9.80
 - Added: Leaderboard opt-in prompt and token ping for Windows (dgc.ps1) — parity with Mac/Linux
 - Fixed: Windows users can now appear on graperoot.dev/leaderboard
