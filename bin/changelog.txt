@@ -1,3 +1,7 @@
+3.9.79
+- Fixed: leaderboard token telemetry was reading wrong file — now reads ~/.claude/token-counter/history.json (token-counter MCP's actual output)
+- Fixed: token data now actually reaches the server on every dgc ping
+
 3.9.78
 - Fixed: stdio MCP transport broken when invoked as console script (mcp-graph-server --stdio) — was starting HTTP server instead
 - Fixed: dual-graph stuck on "connecting" in Claude Code is now resolved

@@ -2235,7 +2235,8 @@ p.write_text(json.dumps({'opt_in':'no'}))
 
   # ── Send token telemetry in ping (dgc only) ─────────────────────────────────
   _LB_MID="$(_machine_id)"
-  _TOKEN_LOG="$HOME/.dual-graph/token_usage.jsonl"
+  # token-counter MCP writes to ~/.claude/token-counter/history.json (camelCase fields)
+  _TOKEN_LOG="$HOME/.claude/token-counter/history.json"
   if [[ -n "$_LB_MID" ]] && [[ -f "$_TOKEN_LOG" ]]; then
     _TOKEN_PAYLOAD=$(python3 - "$_TOKEN_LOG" 2>/dev/null << 'TKPY'
 import json, sys
@@ -2249,22 +2250,21 @@ def model_key(model: str) -> str:
     return "claude-sonnet"  # default
 
 totals = {}
-for line in Path(sys.argv[1]).read_text(encoding="utf-8").splitlines():
-    line = line.strip()
-    if not line:
-        continue
-    try:
-        e = json.loads(line)
-    except Exception:
-        continue
+try:
+    entries = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+except Exception:
+    entries = []
+if not isinstance(entries, list):
+    entries = []
+for e in entries:
     mkey = model_key(e.get("model", ""))
     if mkey not in totals:
         totals[mkey] = {"input": 0, "output": 0, "cache_write": 0, "cache_read": 0, "cost_usd": 0.0}
-    totals[mkey]["input"]       += int(e.get("input_tokens", 0))
-    totals[mkey]["output"]      += int(e.get("output_tokens", 0))
-    totals[mkey]["cache_write"] += int(e.get("cache_creation_input_tokens", 0))
-    totals[mkey]["cache_read"]  += int(e.get("cache_read_input_tokens", 0))
-    totals[mkey]["cost_usd"]    += float(e.get("cost_usd", 0.0))
+    totals[mkey]["input"]       += int(e.get("inputTokens", 0))
+    totals[mkey]["output"]      += int(e.get("outputTokens", 0))
+    totals[mkey]["cache_write"] += int(e.get("cacheWriteTokens", 0))
+    totals[mkey]["cache_read"]  += int(e.get("cacheReadTokens", 0))
+    totals[mkey]["cost_usd"]    += float(e.get("totalCost", 0.0))
 
 grand_input = grand_output = grand_cache_write = grand_cache_read = 0
 grand_cost = 0.0
