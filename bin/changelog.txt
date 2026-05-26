@@ -1,3 +1,7 @@
+3.9.80
+- Added: Leaderboard opt-in prompt and token ping for Windows (dgc.ps1) — parity with Mac/Linux
+- Fixed: Windows users can now appear on graperoot.dev/leaderboard
+
 3.9.79
 - Fixed: leaderboard token telemetry was reading wrong file — now reads ~/.claude/token-counter/history.json (token-counter MCP's actual output)
 - Fixed: token data now actually reaches the server on every dgc ping

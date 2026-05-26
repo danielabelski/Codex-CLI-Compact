@@ -1167,6 +1167,72 @@ if ($transcript -and (Test-Path $transcript)) {
     [System.IO.File]::WriteAllText($settingsFile, ($hooks | ConvertTo-Json -Depth 8))
     Write-Host "[$Tool] Context hooks ready (SessionStart + PreCompact + Stop)"
 
+    # -- Leaderboard opt-in (one-time prompt) + token ping --
+    $lbServer   = if ($env:DG_LICENSE_SERVER) { $env:DG_LICENSE_SERVER } else { "https://dual-graph-license-production.up.railway.app" }
+    $lbOptFile  = Join-Path $DG "leaderboard_opted_in"
+    $lbAliasFile = Join-Path $DG "leaderboard_alias"
+    $lbMid      = Get-MachineId
+
+    # One-time opt-in prompt (only if interactive and not yet decided)
+    if (-not (Test-Path $lbOptFile) -and [Environment]::UserInteractive) {
+        Write-Host ""
+        Write-Host "[$Tool] Want to appear on the graperoot leaderboard?"
+        Write-Host "[$Tool] It shows how many tokens you've used. Only your chosen name is shared."
+        Write-Host "[$Tool] View: https://graperoot.dev/leaderboard"
+        $lbAns = ""
+        try { $lbAns = Read-Host "[$Tool] Opt in? (y/N)" } catch { $lbAns = "" }
+        if ($lbAns -match '^[Yy]') {
+            $lbName = ""
+            try { $lbName = Read-Host "[$Tool] Display name (shown publicly)" } catch { $lbName = "" }
+            if (-not $lbName) { $lbName = "anonymous" }
+            [System.IO.File]::WriteAllText($lbOptFile, (ConvertTo-Json @{ opt_in = "yes"; alias = $lbName } -Compress))
+            try {
+                $body = ConvertTo-Json @{ machine_id = $lbMid; alias = $lbName; opt_in = $true } -Compress
+                Invoke-WebRequest -Uri "$lbServer/set-alias" -Method Post -Body $body -ContentType "application/json" -UseBasicParsing -TimeoutSec 5 | Out-Null
+            } catch {}
+            Write-Host "[$Tool] You're on the leaderboard as '$lbName'!"
+        } else {
+            [System.IO.File]::WriteAllText($lbOptFile, (ConvertTo-Json @{ opt_in = "no" } -Compress))
+            Write-Host "[$Tool] Skipped. Run 'dgc --leaderboard' anytime to opt in later."
+        }
+        Write-Host ""
+    }
+
+    # Token ping — read ~/.claude/token-counter/history.json (token-counter MCP's output)
+    $tcHistoryFile = Join-Path $env:USERPROFILE ".claude\token-counter\history.json"
+    if ($lbMid -and (Test-Path $tcHistoryFile)) {
+        try {
+            $entries = Get-Content $tcHistoryFile -Raw | ConvertFrom-Json
+            if ($entries -is [array] -and $entries.Count -gt 0) {
+                $totals = @{}
+                foreach ($e in $entries) {
+                    $m = ($e.model -or "").ToLower()
+                    $mk = if ($m -match "opus") { "claude-opus" } elseif ($m -match "haiku") { "claude-haiku" } else { "claude-sonnet" }
+                    if (-not $totals[$mk]) { $totals[$mk] = @{ input=0; output=0; cache_write=0; cache_read=0; cost_usd=0.0 } }
+                    $totals[$mk].input       += [int]($e.inputTokens)
+                    $totals[$mk].output      += [int]($e.outputTokens)
+                    $totals[$mk].cache_write += [int]($e.cacheWriteTokens)
+                    $totals[$mk].cache_read  += [int]($e.cacheReadTokens)
+                    $totals[$mk].cost_usd    += [double]($e.totalCost)
+                }
+                $gi = 0; $go = 0; $gcw = 0; $gcr = 0; $gc = 0.0; $byModel = @{}
+                foreach ($mk in $totals.Keys) {
+                    $t = $totals[$mk]
+                    $gi += $t.input; $go += $t.output; $gcw += $t.cache_write; $gcr += $t.cache_read; $gc += $t.cost_usd
+                    $byModel[$mk] = @{ input_tokens=$t.input; output_tokens=$t.output; cache_write_tokens=$t.cache_write; cache_read_tokens=$t.cache_read; cost_usd=[math]::Round($t.cost_usd,6) }
+                }
+                if ($gi -gt 0) {
+                    $tokenTotals = @{ input_tokens=$gi; output_tokens=$go; cache_write_tokens=$gcw; cache_read_tokens=$gcr; cost_usd=[math]::Round($gc,6); by_model=$byModel }
+                    $pingBody = ConvertTo-Json @{ machine_id=$lbMid; platform="windows"; tool="dgc"; token_totals=$tokenTotals } -Compress -Depth 5
+                    Start-Job -ScriptBlock {
+                        try { Invoke-WebRequest -Uri "$using:lbServer/ping" -Method Post -Body $using:pingBody -ContentType "application/json" -UseBasicParsing -TimeoutSec 5 | Out-Null } catch {}
+                    } | Out-Null
+                }
+            }
+        } catch {}
+    }
+    # -------------------------------------------------------------------------
+
     Write-Host ""
     Write-Host "[$Tool] Starting claude..."
     Write-Host ""
