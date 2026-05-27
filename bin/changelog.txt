@@ -1,3 +1,6 @@
+3.9.86
+- Windows ARM64: add native compiled wheel support
+
 3.9.85
 - Windows: force wheel reinstall to replace sdist build
 
