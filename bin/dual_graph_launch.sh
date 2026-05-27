@@ -922,9 +922,9 @@ _GRAPEROOT_OK=0
 if "$PYTHON" -c "import graperoot.graph_builder" 2>/dev/null; then
   _GRAPEROOT_OK=1
 elif "$PYTHON" -c "import graperoot" 2>/dev/null; then
-  # graperoot imports but graph_builder submodule missing (broken sdist install) — upgrade
-  echo "[$TOOL_LABEL] graperoot.graph_builder missing — upgrading graperoot..."
-  if "$VENV_BIN/pip" install graperoot --upgrade --quiet 2>/dev/null; then
+  # graperoot imports but graph_builder submodule missing (broken sdist install) — force reinstall
+  echo "[$TOOL_LABEL] graperoot.graph_builder missing — reinstalling graperoot..."
+  if "$VENV_BIN/pip" install graperoot --upgrade --force-reinstall --no-cache-dir --quiet 2>/dev/null; then
     _GRAPEROOT_OK=1
   fi
 else
