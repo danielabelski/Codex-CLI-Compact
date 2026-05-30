@@ -1,3 +1,6 @@
+3.9.87
+- Fix leaderboard: restore token sync and opt-in endpoint
+
 3.9.86
 - Windows ARM64: add native compiled wheel support
 

@@ -2249,6 +2249,26 @@ p.write_text(json.dumps({'opt_in':'no'}))
     echo ""
   fi
 
+  # ── Re-send opt-in if locally saved but server may have missed it ───────────
+  if [[ -f "$_LB_OPTED_FILE" ]]; then
+    _lb_saved_alias=$(python3 -c "
+import json, sys
+from pathlib import Path
+d = json.loads(Path(sys.argv[1]).read_text())
+if d.get('opt_in') == 'yes':
+    print(d.get('alias', 'anonymous'))
+" "$_LB_OPTED_FILE" 2>/dev/null || true)
+    if [[ -n "$_lb_saved_alias" ]]; then
+      _lb_mid="$(_machine_id)"
+      if [[ -n "$_lb_mid" ]]; then
+        (curl -sf -X POST "$_LB_LICENSE_SERVER/set-alias" \
+          -H "Content-Type: application/json" \
+          -d "{\"machine_id\":\"$_lb_mid\",\"alias\":\"$_lb_saved_alias\",\"opt_in\":true}" \
+          --max-time 5 >/dev/null 2>&1 || true) &
+      fi
+    fi
+  fi
+
   # ── Send token telemetry in ping (dgc only) ─────────────────────────────────
   _LB_MID="$(_machine_id)"
   # token-counter MCP writes to ~/.claude/token-counter/history.json (camelCase fields)

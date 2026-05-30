@@ -1198,6 +1198,21 @@ if ($transcript -and (Test-Path $transcript)) {
         Write-Host ""
     }
 
+    # Re-send opt-in if locally saved but server may have missed it
+    if (Test-Path $lbOptFile) {
+        try {
+            $lbData = Get-Content $lbOptFile -Raw | ConvertFrom-Json
+            if ($lbData.opt_in -eq "yes" -and $lbMid) {
+                $lbAlias = if ($lbData.alias) { $lbData.alias } else { "anonymous" }
+                $body = ConvertTo-Json @{ machine_id = $lbMid; alias = $lbAlias; opt_in = $true } -Compress
+                Start-Job -ScriptBlock {
+                    param($uri, $b)
+                    try { Invoke-WebRequest -Uri $uri -Method Post -Body $b -ContentType "application/json" -UseBasicParsing -TimeoutSec 5 | Out-Null } catch {}
+                } -ArgumentList "$lbServer/set-alias", $body | Out-Null
+            }
+        } catch {}
+    }
+
     # Token ping — read ~/.claude/token-counter/history.json (token-counter MCP's output)
     $tcHistoryFile = Join-Path $env:USERPROFILE ".claude\token-counter\history.json"
     if ($lbMid -and (Test-Path $tcHistoryFile)) {
