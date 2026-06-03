@@ -27,6 +27,24 @@ foreach ($a in $args) {
     if ($a -in $_otherTools) {
         $DG = Join-Path $env:USERPROFILE ".dual-graph"
         $GrapePs1 = Join-Path $DG "graperoot.ps1"
+        # Force-download fresh graperoot.ps1 to ensure delegation works
+        $GrapeR2 = "https://pub-18426978d5a14bf4a60ddedd7d5b6dab.r2.dev/graperoot.ps1"
+        $GrapeGH = "https://raw.githubusercontent.com/kunal12203/Codex-CLI-Compact/main/bin/graperoot.ps1"
+        try {
+            $tmp = "$GrapePs1.tmp"
+            Invoke-WebRequest $GrapeR2 -OutFile $tmp -UseBasicParsing -TimeoutSec 15 -ErrorAction Stop
+            if ((Test-Path $tmp) -and (Get-Item $tmp).Length -gt 1024) {
+                Move-Item $tmp $GrapePs1 -Force
+            }
+        } catch {
+            try {
+                Invoke-WebRequest $GrapeGH -OutFile $tmp -UseBasicParsing -TimeoutSec 15 -ErrorAction Stop
+                if ((Test-Path $tmp) -and (Get-Item $tmp).Length -gt 1024) {
+                    Move-Item $tmp $GrapePs1 -Force
+                }
+            } catch {}
+        }
+        Remove-Item "$GrapePs1.tmp" -Force -ErrorAction SilentlyContinue
         if (-not (Test-Path $GrapePs1)) {
             $GrapePs1 = Join-Path (Split-Path -Parent $MyInvocation.MyCommand.Definition) "graperoot.ps1"
         }

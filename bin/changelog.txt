@@ -1,3 +1,6 @@
+3.9.90
+- Fix: dgc --opencode now force-downloads fresh graperoot.ps1 before delegation (fixes stale cache)
+
 3.9.89
 - Fix: graperoot --opencode / --cursor / --gemini / --copilot now work on Windows (param binding fix)
 
