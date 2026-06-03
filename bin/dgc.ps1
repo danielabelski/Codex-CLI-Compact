@@ -21,6 +21,25 @@ $Prompt = ""
 $Resume = ""
 $ClaudeExtraArgs = @()
 
+# -- Delegate to graperoot.ps1 for non-Claude tools ----------------------------
+$_otherTools = @("--opencode","--cursor","--gemini","--copilot","--codex")
+foreach ($a in $args) {
+    if ($a -in $_otherTools) {
+        $DG = Join-Path $env:USERPROFILE ".dual-graph"
+        $GrapePs1 = Join-Path $DG "graperoot.ps1"
+        if (-not (Test-Path $GrapePs1)) {
+            $GrapePs1 = Join-Path (Split-Path -Parent $MyInvocation.MyCommand.Definition) "graperoot.ps1"
+        }
+        if (-not (Test-Path $GrapePs1)) {
+            Write-Host "[dgc] ERROR: $a requires graperoot.ps1, which is missing."
+            Write-Host "[dgc]   Run: irm https://raw.githubusercontent.com/kunal12203/Codex-CLI-Compact/main/install.ps1 | iex"
+            exit 1
+        }
+        & $GrapePs1 @args
+        exit $LASTEXITCODE
+    }
+}
+
 $i = 0
 while ($i -lt $args.Count) {
     $a = [string]$args[$i]

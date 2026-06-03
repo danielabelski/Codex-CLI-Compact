@@ -1,3 +1,6 @@
+3.9.88
+- Fix: dgc --opencode (and --cursor, --gemini, --copilot, --codex) now delegates correctly on Windows
+
 3.9.87
 - Fix leaderboard: restore token sync and opt-in endpoint
 
