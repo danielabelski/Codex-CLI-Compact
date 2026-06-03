@@ -1,3 +1,6 @@
+3.9.89
+- Fix: graperoot --opencode / --cursor / --gemini / --copilot now work on Windows (param binding fix)
+
 3.9.88
 - Fix: dgc --opencode (and --cursor, --gemini, --copilot, --codex) now delegates correctly on Windows
 

@@ -14,7 +14,13 @@ param(
     [Parameter(Position = 0)] [string]$Arg0 = ".",
     [Parameter(Position = 1)] [string]$Arg1 = "",
     [Parameter(Position = 2)] [string]$Arg2 = "",
-    [string]$Resume = ""
+    [string]$Resume = "",
+    [switch]$claude,
+    [switch]$codex,
+    [switch]$cursor,
+    [switch]$gemini,
+    [switch]$opencode,
+    [switch]$copilot
 )
 
 $ErrorActionPreference = "Continue"
@@ -62,6 +68,14 @@ $ProjectPath = ""
 $Passthrough = @()
 $_validTools = @("claude","codex","cursor","gemini","opencode","copilot")
 $_toolSet    = $false
+
+# Honour switch params (e.g. --opencode passed as PowerShell named switch)
+if ($opencode)  { $Assistant = "opencode"; $_toolSet = $true }
+elseif ($cursor)  { $Assistant = "cursor";   $_toolSet = $true }
+elseif ($gemini)  { $Assistant = "gemini";   $_toolSet = $true }
+elseif ($copilot) { $Assistant = "copilot";  $_toolSet = $true }
+elseif ($codex)   { $Assistant = "codex";    $_toolSet = $true }
+elseif ($claude)  { $Assistant = "claude";   $_toolSet = $true }
 
 foreach ($arg in @($Arg0, $Arg1, $Arg2)) {
     if ($arg -in @("--claude","claude"))     { $Assistant = "claude";   $_toolSet = $true; continue }
