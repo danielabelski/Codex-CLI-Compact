@@ -214,6 +214,7 @@ _PROJECT_SET=false
 FAILOVER_MODEL=""  # set by --model=codex|local|gemini|opencode
 NO_GITIGNORE=false
 CONTEXT_POLICY_FILE=""
+RUNTIME_TOOLNAME_RAW=""
 
 # ── Strip --model flag before Claude's own flag parser sees it ────────────────
 _FILTERED=()
@@ -242,6 +243,15 @@ while (( _dgc_i < ${#_dgc_args[@]} )); do
     CONTEXT_POLICY_FILE="${_dgc_args[$_dgc_i]:-}"
   elif [[ "$_dgc_a" == --context-policy-file=* ]]; then
     CONTEXT_POLICY_FILE="${_dgc_a#--context-policy-file=}"
+  elif [[ "$_dgc_a" == "--toolname" ]]; then
+    if (( _dgc_i + 1 < ${#_dgc_args[@]} )) && [[ "${_dgc_args[$((_dgc_i + 1))]}" != -* ]]; then
+      (( _dgc_i++ )) || true
+      RUNTIME_TOOLNAME_RAW="${_dgc_args[$_dgc_i]:-}"
+    else
+      RUNTIME_TOOLNAME_RAW=""
+    fi
+  elif [[ "$_dgc_a" == --toolname=* ]]; then
+    RUNTIME_TOOLNAME_RAW="${_dgc_a#--toolname=}"
   else
     _FILTERED2+=("$_dgc_a")
   fi
@@ -353,6 +363,17 @@ case "$ASSISTANT" in
   claude) TOOL_LABEL="dgc" ;;
   *)      TOOL_LABEL="graperoot" ;;
 esac
+
+_normalize_toolname() {
+  local value
+  value="$(printf '%s' "${1:-}" | tr '[:upper:]' '[:lower:]')"
+  case "$value" in
+    claude|codex|graperoot) printf '%s' "$value" ;;
+    *) printf 'unknown' ;;
+  esac
+}
+RUNTIME_TOOLNAME="$(_normalize_toolname "$RUNTIME_TOOLNAME_RAW")"
+export DG_TOOLNAME="$RUNTIME_TOOLNAME"
 
 echo ""
 echo "[$TOOL_LABEL] If you receive any errors:"
@@ -501,7 +522,7 @@ _send_cli_error() {
   # Fire-and-forget POST -- never block or fail the launcher
   (curl -sf -X POST "$TELEMETRY_WEBHOOK" \
     -H "Content-Type: application/json" \
-    -d "{\"type\":\"cli_error\",\"platform\":\"$(_platform_name)\",\"machine_id\":\"$(_machine_id)\",\"error_message\":\"$(echo "$errmsg" | head -c 500 | tr '\042\134' '..')\",\"script_step\":\"$step\",\"tool\":\"$TOOL_LABEL\"}" \
+    -d "{\"type\":\"cli_error\",\"platform\":\"$(_platform_name)\",\"machine_id\":\"$(_machine_id)\",\"error_message\":\"$(echo "$errmsg" | head -c 500 | tr '\042\134' '..')\",\"script_step\":\"$step\",\"tool\":\"$TOOL_LABEL\",\"toolname\":\"$RUNTIME_TOOLNAME\"}" \
     --max-time 3 >/dev/null 2>&1 || true) &
 }
 
@@ -1468,6 +1489,7 @@ env \
   DG_DATA_DIR="$DATA_DIR" \
   DUAL_GRAPH_PROJECT_ROOT="$PROJECT" \
   DG_BASE_URL="http://127.0.0.1:$MCP_PORT" \
+  DG_TOOLNAME="$RUNTIME_TOOLNAME" \
   PORT="$MCP_PORT" \
   "${_MCP_CMD[@]}" \
   >> "$RUN_DIR/mcp_server.log" 2>&1 &
@@ -1497,6 +1519,7 @@ if [[ "$_MCP_READY" != "1" ]]; then
     DG_DATA_DIR="$DATA_DIR" \
     DUAL_GRAPH_PROJECT_ROOT="$PROJECT" \
     DG_BASE_URL="http://127.0.0.1:$MCP_PORT" \
+    DG_TOOLNAME="$RUNTIME_TOOLNAME" \
     PORT="$MCP_PORT" \
     "${_MCP_CMD[@]}" \
     >> "$RUN_DIR/mcp_server.log" 2>&1 &
@@ -1656,7 +1679,7 @@ MIDPY
 if [[ -n "\$_LB_MID_STOP" ]]; then
   curl -sf -X POST "${_LB_LICENSE_SERVER:-https://dual-graph-license-production.up.railway.app}/ping" \
     -H "Content-Type: application/json" \
-    -d "{\"machine_id\":\"\$_LB_MID_STOP\",\"platform\":\"macos\",\"tool\":\"dgc\"}" \
+    -d "{\"machine_id\":\"\$_LB_MID_STOP\",\"platform\":\"macos\",\"tool\":\"dgc\",\"toolname\":\"$RUNTIME_TOOLNAME\"}" \
     --max-time 5 >/dev/null 2>&1 || true
 fi
 exit 0
@@ -1876,6 +1899,7 @@ PY
   if _MCP_REG_ERR="$(claude mcp add dual-graph \
     -e DG_DATA_DIR="$DATA_DIR" \
     -e DUAL_GRAPH_PROJECT_ROOT="$PROJECT" \
+    -e DG_TOOLNAME="$RUNTIME_TOOLNAME" \
     -- "${_STDIO_CMD[@]}" 2>&1)"; then
     _MCP_REG_OK=1
   fi
@@ -1903,6 +1927,7 @@ PY
     if _MCP_REG_ERR="$(claude mcp add dual-graph \
       -e DG_DATA_DIR="$DATA_DIR" \
       -e DUAL_GRAPH_PROJECT_ROOT="$PROJECT" \
+      -e DG_TOOLNAME="$RUNTIME_TOOLNAME" \
       -- "${_STDIO_CMD[@]}" 2>&1)"; then
       _MCP_REG_OK=1
     elif _MCP_REG_ERR="$(claude mcp add --transport http dual-graph "http://127.0.0.1:$MCP_PORT/mcp" 2>&1)"; then
@@ -2197,7 +2222,7 @@ if [[ ! -f "$_FEEDBACK_MARKER" ]] && [[ -t 0 ]] && [[ "$(_get_telemetry_consent)
     read -r -t 30 _SUGGESTION 2>/dev/null || _SUGGESTION=""
     (curl -sf -X POST "$FEEDBACK_WEBHOOK" \
       -H "Content-Type: application/json" \
-      -d "{\"type\":\"feedback\",\"platform\":\"$(_platform_name)\",\"machine_id\":\"$(_machine_id)\",\"rating\":$_RATING,\"suggestion\":\"$(echo "$_SUGGESTION" | head -c 300 | tr '\042\134' '..')\",\"tool\":\"$TOOL_LABEL\"}" \
+      -d "{\"type\":\"feedback\",\"platform\":\"$(_platform_name)\",\"machine_id\":\"$(_machine_id)\",\"rating\":$_RATING,\"suggestion\":\"$(echo "$_SUGGESTION" | head -c 300 | tr '\042\134' '..')\",\"tool\":\"$TOOL_LABEL\",\"toolname\":\"$RUNTIME_TOOLNAME\"}" \
       --max-time 5 >/dev/null 2>&1 || true) &
     echo "[$TOOL_LABEL] Thanks for the feedback!"
   fi
@@ -2333,7 +2358,7 @@ print(json.dumps({
 TKPY
     )
     if [[ -n "$_TOKEN_PAYLOAD" ]]; then
-      _PING_BODY="{\"machine_id\":\"$_LB_MID\",\"platform\":\"$(_platform_name)\",\"tool\":\"dgc\",\"token_totals\":$_TOKEN_PAYLOAD}"
+      _PING_BODY="{\"machine_id\":\"$_LB_MID\",\"platform\":\"$(_platform_name)\",\"tool\":\"dgc\",\"toolname\":\"$RUNTIME_TOOLNAME\",\"token_totals\":$_TOKEN_PAYLOAD}"
       (curl -sf -X POST "$_LB_LICENSE_SERVER/ping" \
         -H "Content-Type: application/json" \
         -d "$_PING_BODY" \

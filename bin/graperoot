@@ -68,7 +68,10 @@ PASSTHROUGH=()
 _VALID_TOOLS="claude codex cursor gemini opencode copilot"
 _TOOL_SET=false
 
-for arg in "$@"; do
+ARGS=("$@")
+i=0
+while (( i < ${#ARGS[@]} )); do
+  arg="${ARGS[$i]}"
   case "$arg" in
     --claude|claude)     ASSISTANT="claude";   _TOOL_SET=true ;;
     --codex|codex)       ASSISTANT="codex";    _TOOL_SET=true ;;
@@ -76,6 +79,16 @@ for arg in "$@"; do
     --gemini|gemini)     ASSISTANT="gemini";   _TOOL_SET=true ;;
     --opencode|opencode) ASSISTANT="opencode"; _TOOL_SET=true ;;
     --copilot|copilot)   ASSISTANT="copilot";  _TOOL_SET=true ;;
+    --toolname)
+      PASSTHROUGH+=("$arg")
+      if (( i + 1 < ${#ARGS[@]} )) && [[ "${ARGS[$((i + 1))]}" != --* ]]; then
+        i=$((i + 1))
+        PASSTHROUGH+=("${ARGS[$i]}")
+      fi
+      ;;
+    --toolname=*)
+      PASSTHROUGH+=("$arg")
+      ;;
     *)
       # First non-flag positional arg is the project path
       if [[ -z "$PROJECT" && "$arg" != --* ]]; then
@@ -85,6 +98,7 @@ for arg in "$@"; do
       fi
       ;;
   esac
+  i=$((i + 1))
 done
 
 # Catch typos like --claud, --gemi, --curs — check if any passthrough arg looks

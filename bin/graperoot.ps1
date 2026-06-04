@@ -20,7 +20,8 @@ param(
     [switch]$cursor,
     [switch]$gemini,
     [switch]$opencode,
-    [switch]$copilot
+    [switch]$copilot,
+    [string]$toolname = ""
 )
 
 $ErrorActionPreference = "Continue"
@@ -62,12 +63,23 @@ $DG          = Join-Path $env:USERPROFILE ".dual-graph"
 $BaseUrl     = "https://raw.githubusercontent.com/kunal12203/Codex-CLI-Compact/main"
 $Tool        = "graperoot"
 
+function Normalize-ToolName([string]$Value) {
+    $v = if ($Value) { $Value.Trim().ToLowerInvariant() } else { "" }
+    if ($v -in @("claude", "codex", "graperoot")) { return $v }
+    return "unknown"
+}
+$RuntimeToolName = Normalize-ToolName $toolname
+$env:DG_TOOLNAME = $RuntimeToolName
+
 # -- Parse args: find assistant flag, project path, passthrough ----------------
 $Assistant   = "claude"   # default
 $ProjectPath = ""
 $Passthrough = @()
 $_validTools = @("claude","codex","cursor","gemini","opencode","copilot")
 $_toolSet    = $false
+$_inputArgs  = @($Arg0, $Arg1, $Arg2)
+if ($args) { $_inputArgs += $args }
+$_inputArgs = @($_inputArgs | Where-Object { $_ })
 
 # Honour switch params (e.g. --opencode passed as PowerShell named switch)
 if ($opencode)  { $Assistant = "opencode"; $_toolSet = $true }
@@ -77,18 +89,39 @@ elseif ($copilot) { $Assistant = "copilot";  $_toolSet = $true }
 elseif ($codex)   { $Assistant = "codex";    $_toolSet = $true }
 elseif ($claude)  { $Assistant = "claude";   $_toolSet = $true }
 
-foreach ($arg in @($Arg0, $Arg1, $Arg2)) {
-    if ($arg -in @("--claude","claude"))     { $Assistant = "claude";   $_toolSet = $true; continue }
-    if ($arg -in @("--codex","codex"))       { $Assistant = "codex";    $_toolSet = $true; continue }
-    if ($arg -in @("--cursor","cursor"))     { $Assistant = "cursor";   $_toolSet = $true; continue }
-    if ($arg -in @("--gemini","gemini"))     { $Assistant = "gemini";   $_toolSet = $true; continue }
-    if ($arg -in @("--opencode","opencode")) { $Assistant = "opencode"; $_toolSet = $true; continue }
-    if ($arg -in @("--copilot","copilot"))   { $Assistant = "copilot";  $_toolSet = $true; continue }
+$_argIndex = 0
+while ($_argIndex -lt $_inputArgs.Count) {
+    $arg = [string]$_inputArgs[$_argIndex]
+    if ($arg -in @("--claude","claude"))     { $Assistant = "claude";   $_toolSet = $true; $_argIndex++; continue }
+    if ($arg -in @("--codex","codex"))       { $Assistant = "codex";    $_toolSet = $true; $_argIndex++; continue }
+    if ($arg -in @("--cursor","cursor"))     { $Assistant = "cursor";   $_toolSet = $true; $_argIndex++; continue }
+    if ($arg -in @("--gemini","gemini"))     { $Assistant = "gemini";   $_toolSet = $true; $_argIndex++; continue }
+    if ($arg -in @("--opencode","opencode")) { $Assistant = "opencode"; $_toolSet = $true; $_argIndex++; continue }
+    if ($arg -in @("--copilot","copilot"))   { $Assistant = "copilot";  $_toolSet = $true; $_argIndex++; continue }
+    if ($arg -match '^-{1,2}toolname=(.*)$') {
+        $RuntimeToolName = Normalize-ToolName $Matches[1]
+        $env:DG_TOOLNAME = $RuntimeToolName
+        $_argIndex++
+        continue
+    }
+    if ($arg -in @("--toolname", "-toolname")) {
+        if ($_argIndex + 1 -lt $_inputArgs.Count -and -not ([string]$_inputArgs[$_argIndex + 1]).StartsWith("-")) {
+            $RuntimeToolName = Normalize-ToolName ([string]$_inputArgs[$_argIndex + 1])
+            $env:DG_TOOLNAME = $RuntimeToolName
+            $_argIndex += 2
+            continue
+        }
+        $RuntimeToolName = "unknown"
+        $env:DG_TOOLNAME = $RuntimeToolName
+        $_argIndex++
+        continue
+    }
     if ($arg -and $arg -ne ".") {
         if ($arg.StartsWith("--")) { $Passthrough += $arg }
         elseif (-not $ProjectPath) { $ProjectPath = $arg }
         else { $Passthrough += $arg }
     }
+    $_argIndex++
 }
 
 # Catch typos like --claud, --gemi  - check if any passthrough arg looks like a misspelled tool
@@ -130,6 +163,8 @@ if ($Assistant -in @("claude","codex")) {
         }
     }
     $invokeArgs = @($ProjectPath) + $Passthrough
+    $invokeArgs += "-toolname"
+    $invokeArgs += $RuntimeToolName
     if ($Resume) { $invokeArgs += "--resume"; $invokeArgs += $Resume }
     & $Target @invokeArgs
     exit $LASTEXITCODE
@@ -175,6 +210,8 @@ if ($_RemoteVer -and ($_LocalVer -eq "0" -or ([version]$_RemoteVer -gt [version]
     if (Test-Path $_newScript) {
         # Filter empty strings  -  splatting "" to a typed [string] param causes coercion errors
         $_restartArgs = @($Arg0, $Arg1, $Arg2) | Where-Object { $_ }
+        $_restartArgs += "-toolname"
+        $_restartArgs += $RuntimeToolName
         if ($Resume) { $_restartArgs += "--resume"; $_restartArgs += $Resume }
         & $_newScript @_restartArgs; exit $LASTEXITCODE
     }
@@ -320,6 +357,7 @@ $McpLog     = Join-Path $DataDir "mcp_server.log"
 $McpPidFile = Join-Path $DataDir "mcp_server.pid"
 
 Set-Content -Path $McpPortFile -Value $McpPort
+$env:DG_TOOLNAME = $RuntimeToolName
 
 Write-Host "[$Tool] Port    : $McpPort"
 Write-Host "[$Tool] Waiting for MCP server..."

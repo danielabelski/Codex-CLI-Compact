@@ -1,3 +1,6 @@
+3.9.91
+- Fixed: leaderboard and admin stats now correctly separate Claude, Codex, and GrapeRoot runtime usage
+
 3.9.90
 - Fix: dgc --opencode now force-downloads fresh graperoot.ps1 before delegation (fixes stale cache)
 

@@ -20,6 +20,7 @@ $_projectSet = $false
 $Prompt = ""
 $Resume = ""
 $ClaudeExtraArgs = @()
+$RuntimeToolNameRaw = ""
 
 # -- Delegate to graperoot.ps1 for non-Claude tools ----------------------------
 $_otherTools = @("--opencode","--cursor","--gemini","--copilot","--codex")
@@ -69,6 +70,18 @@ while ($i -lt $args.Count) {
         # PowerShell-native convention: -Resume <id>
         $a = '--resume'
         # fall through to --flag handling below
+    }
+    if ($a -match '^-{1,2}toolname=(.*)$') {
+        $RuntimeToolNameRaw = $Matches[1]
+        $i++; continue
+    }
+    elseif ($a -in @('--toolname', '-toolname')) {
+        if ($i + 1 -lt $args.Count -and -not ([string]$args[$i+1]).StartsWith('-')) {
+            $RuntimeToolNameRaw = [string]$args[$i+1]
+            $i += 2; continue
+        }
+        $RuntimeToolNameRaw = ""
+        $i++; continue
     }
     if ($a -match '^--[^=]+=') {
         # --flag=value form (e.g. --tmux=classic)  - pass as-is
@@ -130,6 +143,14 @@ $BaseUrl = "https://raw.githubusercontent.com/kunal12203/Codex-CLI-Compact/main"
 $Python = Join-Path $DG "venv\Scripts\python.exe"
 $NoticeFile = Join-Path $DG "last_update_notice.txt"
 $WebhookUrl = "https://script.google.com/macros/s/AKfycbyq_5igbBUORhSqMNktAoX2GQg8BadKcYZOTV-XRUr3vbY3QuK7jjS8EWLg_pZyMDuD/exec"
+
+function Normalize-ToolName([string]$Value) {
+    $v = if ($Value) { $Value.Trim().ToLowerInvariant() } else { "" }
+    if ($v -in @("claude", "codex", "graperoot")) { return $v }
+    return "unknown"
+}
+$RuntimeToolName = Normalize-ToolName $RuntimeToolNameRaw
+$env:DG_TOOLNAME = $RuntimeToolName
 
 function Get-MachineId {
     $idFile = Join-Path $DG "identity.json"
@@ -202,6 +223,7 @@ function Send-CliError([string]$Step, [string]$ErrorMessage) {
             error_message = $ErrorMessage
             script_step = $Step
             tool = $Tool
+            toolname = $RuntimeToolName
         } | ConvertTo-Json -Compress
         Invoke-WebRequest -Uri $WebhookUrl -Method Post -Body $body -ContentType "application/json" -UseBasicParsing -TimeoutSec 3 | Out-Null
     } catch {}
@@ -543,6 +565,8 @@ try {
                     $reArgs = @($ProjectPath)
                     if ($Prompt) { $reArgs += $Prompt }
                     $reArgs += $ClaudeExtraArgs
+                    $reArgs += "--toolname"
+                    $reArgs += $RuntimeToolName
                     & $updatedScript @reArgs; exit $LASTEXITCODE
                 }
             }
@@ -956,6 +980,7 @@ Keep ``CONTEXT.md`` under 20 lines total. Do NOT summarize the full conversation
     $env:DG_DATA_DIR = $DataDir
     $env:DUAL_GRAPH_PROJECT_ROOT = $resolvedProject
     $env:DG_BASE_URL = "http://127.0.0.1:$port"
+    $env:DG_TOOLNAME = $RuntimeToolName
     $env:PORT = "$port"
     if ($grapeOk) {
         $server = Start-Process -FilePath (Join-Path $VenvBin "mcp-graph-server.exe") -RedirectStandardOutput $log -RedirectStandardError $errLog -WindowStyle Hidden -PassThru
@@ -1275,7 +1300,7 @@ if ($transcript -and (Test-Path $transcript)) {
                 }
                 if ($gi -gt 0) {
                     $tokenTotals = @{ input_tokens=$gi; output_tokens=$go; cache_write_tokens=$gcw; cache_read_tokens=$gcr; cost_usd=[math]::Round($gc,6); by_model=$byModel }
-                    $pingBody = ConvertTo-Json @{ machine_id=$lbMid; platform="windows"; tool="dgc"; token_totals=$tokenTotals } -Compress -Depth 5
+                    $pingBody = ConvertTo-Json @{ machine_id=$lbMid; platform="windows"; tool="dgc"; toolname=$RuntimeToolName; token_totals=$tokenTotals } -Compress -Depth 5
                     Start-Job -ScriptBlock {
                         try { Invoke-WebRequest -Uri "$using:lbServer/ping" -Method Post -Body $using:pingBody -ContentType "application/json" -UseBasicParsing -TimeoutSec 5 | Out-Null } catch {}
                     } | Out-Null

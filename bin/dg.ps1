@@ -1,7 +1,8 @@
 # dg - Codex CLI + dual-graph MCP launcher (PowerShell)
 param(
     [Parameter(Position = 0)]
-    [string]$ProjectPath = "."
+    [string]$ProjectPath = ".",
+    [string]$toolname = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -13,6 +14,14 @@ $BaseUrl = "https://raw.githubusercontent.com/kunal12203/Codex-CLI-Compact/main"
 $Python = Join-Path $DG "venv\Scripts\python.exe"
 $NoticeFile = Join-Path $DG "last_update_notice.txt"
 $WebhookUrl = "https://script.google.com/macros/s/AKfycbyq_5igbBUORhSqMNktAoX2GQg8BadKcYZOTV-XRUr3vbY3QuK7jjS8EWLg_pZyMDuD/exec"
+
+function Normalize-ToolName([string]$Value) {
+    $v = if ($Value) { $Value.Trim().ToLowerInvariant() } else { "" }
+    if ($v -in @("claude", "codex", "graperoot")) { return $v }
+    return "unknown"
+}
+$RuntimeToolName = Normalize-ToolName $toolname
+$env:DG_TOOLNAME = $RuntimeToolName
 
 function Get-MachineId {
     $idFile = Join-Path $DG "identity.json"
@@ -85,6 +94,7 @@ function Send-CliError([string]$Step, [string]$ErrorMessage) {
             error_message = $ErrorMessage
             script_step = $Step
             tool = $Tool
+            toolname = $RuntimeToolName
         } | ConvertTo-Json -Compress
         Invoke-WebRequest -Uri $WebhookUrl -Method Post -Body $body -ContentType "application/json" -UseBasicParsing -TimeoutSec 3 | Out-Null
     } catch {}
@@ -346,7 +356,7 @@ try {
                 } catch {}
                 Write-Host "[$Tool] Updated to $remoteVer. Restarting..."
                 $updatedScript = Join-Path $DG "dg.ps1"
-                if (Test-Path $updatedScript) { & $updatedScript $ProjectPath; exit $LASTEXITCODE }
+                if (Test-Path $updatedScript) { & $updatedScript $ProjectPath -toolname $RuntimeToolName; exit $LASTEXITCODE }
             }
         } catch {}
     }
@@ -562,6 +572,7 @@ try {
     $env:DUAL_GRAPH_PROJECT_ROOT = $resolvedProject
     $env:DG_BASE_URL = "http://127.0.0.1:$port"
     $env:DG_MCP_PORT = "$port"
+    $env:DG_TOOLNAME = $RuntimeToolName
     if ($grapeOk) {
         $server = Start-Process -FilePath (Join-Path $VenvBin "mcp-graph-server.exe") -RedirectStandardOutput $log -RedirectStandardError $errLog -WindowStyle Hidden -PassThru
     } else {
@@ -576,6 +587,7 @@ try {
         $port = $port + 1
         $env:DG_BASE_URL = "http://127.0.0.1:$port"
         $env:DG_MCP_PORT = "$port"
+        $env:DG_TOOLNAME = $RuntimeToolName
         if ($grapeOk) {
             $server = Start-Process -FilePath (Join-Path $VenvBin "mcp-graph-server.exe") -RedirectStandardOutput $log -RedirectStandardError $errLog -WindowStyle Hidden -PassThru
         } else {
