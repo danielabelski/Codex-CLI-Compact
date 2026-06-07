@@ -2,7 +2,7 @@
 param(
     [Parameter(Position = 0)]
     [string]$ProjectPath = ".",
-    [string]$toolname = ""
+    [string]$toolname = "codex"
 )
 
 $ErrorActionPreference = "Stop"

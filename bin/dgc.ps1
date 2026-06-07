@@ -20,7 +20,7 @@ $_projectSet = $false
 $Prompt = ""
 $Resume = ""
 $ClaudeExtraArgs = @()
-$RuntimeToolNameRaw = ""
+$RuntimeToolNameRaw = "claude"
 
 # -- Delegate to graperoot.ps1 for non-Claude tools ----------------------------
 $_otherTools = @("--opencode","--cursor","--gemini","--copilot","--codex")

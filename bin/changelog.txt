@@ -1,3 +1,7 @@
+3.9.92
+- Added: --antigravity flag (Google Antigravity IDE support) across all platforms
+- Fixed: graph_builder not found on Windows (underscore→hyphen exe name, module fallback)
+
 3.9.91
 - Fixed: leaderboard and admin stats now correctly separate Claude, Codex, and GrapeRoot runtime usage
 

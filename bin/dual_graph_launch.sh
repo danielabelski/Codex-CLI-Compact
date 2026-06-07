@@ -192,8 +192,8 @@ fi
 
 if [[ "$ASSISTANT" != "codex" && "$ASSISTANT" != "claude" && "$ASSISTANT" != "cursor" \
    && "$ASSISTANT" != "gemini" && "$ASSISTANT" != "opencode" && "$ASSISTANT" != "copilot" \
-   && "$ASSISTANT" != "leaderboard" ]]; then
-  echo "Usage: $0 <codex|claude|cursor|gemini|opencode|copilot> [project_path] [prompt]" >&2
+   && "$ASSISTANT" != "antigravity" && "$ASSISTANT" != "leaderboard" ]]; then
+  echo "Usage: $0 <codex|claude|cursor|gemini|opencode|copilot|antigravity> [project_path] [prompt]" >&2
   echo "       $0 audit [project_path]   — vibe code health report" >&2
   exit 2
 fi
@@ -220,7 +220,7 @@ RUNTIME_TOOLNAME_RAW=""
 _FILTERED=()
 for _fa in "$@"; do
   if [[ "$_fa" == --model=codex || "$_fa" == --model=local || "$_fa" == --model=ollama \
-     || "$_fa" == --model=gemini || "$_fa" == --model=opencode ]]; then
+     || "$_fa" == --model=gemini || "$_fa" == --model=opencode || "$_fa" == --model=antigravity ]]; then
     FAILOVER_MODEL="${_fa#--model=}"
   else
     _FILTERED+=("$_fa")
@@ -262,9 +262,10 @@ done
 # Apply failover model override
 if [[ -n "$FAILOVER_MODEL" ]]; then
   case "$FAILOVER_MODEL" in
-    codex|openai)  ASSISTANT="codex" ;;
-    gemini)        ASSISTANT="gemini" ;;
-    opencode)      ASSISTANT="opencode" ;;
+    codex|openai)    ASSISTANT="codex" ;;
+    gemini)          ASSISTANT="gemini" ;;
+    opencode)        ASSISTANT="opencode" ;;
+    antigravity)     ASSISTANT="antigravity" ;;
     local|ollama)
       ASSISTANT="codex"
       export OPENAI_BASE_URL="http://localhost:11434/v1"
@@ -401,6 +402,10 @@ case "$ASSISTANT" in
   copilot)
     echo "[$TOOL_LABEL]   1. Wait 5 minutes and run graperoot again"
     echo "[$TOOL_LABEL]   2. Ensure VS Code is installed: https://code.visualstudio.com"
+    ;;
+  antigravity)
+    echo "[$TOOL_LABEL]   1. Wait 5 minutes and run graperoot again"
+    echo "[$TOOL_LABEL]   2. Install Antigravity: curl -fsSL https://antigravity.google/cli/install.sh | bash"
     ;;
 esac
 echo "[$TOOL_LABEL]   3. Join Discord for help: https://discord.gg/rxgVVgCh"
@@ -1876,7 +1881,7 @@ try:
 except Exception:
     cfg = {}
 servers = cfg.get("mcpServers", {})
-stale = [k for k in list(servers.keys()) if k in ("dual-graph", "graperoot-pro")]
+stale = [k for k in list(servers.keys()) if k == "dual-graph"]
 for k in stale:
     del servers[k]
 cfg["mcpServers"] = servers
@@ -2181,6 +2186,48 @@ PY
   echo "[$TOOL_LABEL]"
   echo "[$TOOL_LABEL] NOTE: enable dual-graph in VS Code (one-time setup):"
   echo "[$TOOL_LABEL]   Copilot Chat panel -> Agent mode -> enable 'dual-graph'"
+
+elif [[ "$ASSISTANT" == "antigravity" ]]; then
+  CURRENT_STEP="Registering MCP (Antigravity)"
+
+  # Auto-install agy CLI if missing
+  if ! command -v agy &>/dev/null; then
+    echo "[$TOOL_LABEL] agy (Antigravity CLI) not found — installing..."
+    if curl -fsSL https://antigravity.google/cli/install.sh 2>/dev/null | bash >/dev/null 2>&1; then
+      true
+    fi
+    export PATH="$PATH:$HOME/.local/bin:$HOME/bin:/usr/local/bin"
+    if ! command -v agy &>/dev/null; then
+      echo "[$TOOL_LABEL] ERROR: could not auto-install Antigravity CLI."
+      echo "[$TOOL_LABEL]   curl -fsSL https://antigravity.google/cli/install.sh | bash"
+      _send_cli_error "Registering MCP" "agy CLI not found, auto-install failed"
+      exit 1
+    fi
+    echo "[$TOOL_LABEL] Antigravity CLI installed."
+  fi
+
+  # Write MCP server entry into ~/.gemini/antigravity-cli/mcp_config.json
+  mkdir -p "$HOME/.gemini/antigravity-cli"
+  "$PYTHON" - "$HOME/.gemini/antigravity-cli/mcp_config.json" "$MCP_PORT" <<'PY'
+import json, sys, os
+config_file = sys.argv[1]
+port = sys.argv[2]
+existing = {}
+if os.path.exists(config_file):
+    try:
+        with open(config_file, "r", encoding="utf-8") as f:
+            existing = json.load(f)
+    except Exception:
+        pass
+servers = existing.get("mcpServers", {})
+servers["dual-graph"] = {"url": f"http://127.0.0.1:{port}/mcp"}
+existing["mcpServers"] = servers
+with open(config_file, "w", encoding="utf-8") as f:
+    json.dump(existing, f, indent=2)
+    f.write("\n")
+PY
+  echo "[$TOOL_LABEL] MCP config written -> ~/.gemini/antigravity-cli/mcp_config.json"
+  echo "[$TOOL_LABEL] MCP URL: http://127.0.0.1:$MCP_PORT/mcp"
 fi
 
 # ── First-run: show all available commands ────────────────────────────────────
@@ -2192,12 +2239,13 @@ if [[ ! -f "$_INSTALL_DATE_FILE" ]]; then
   echo "  Graperoot installed! Available commands:"
   echo "======================================================"
   echo ""
-  echo "  graperoot [path] --claude    Claude Code"
-  echo "  graperoot [path] --codex     OpenAI Codex"
-  echo "  graperoot [path] --cursor    Cursor IDE"
-  echo "  graperoot [path] --gemini    Google Gemini CLI"
-  echo "  graperoot [path] --opencode  OpenCode"
-  echo "  graperoot [path] --copilot   GitHub Copilot (VS Code)"
+  echo "  graperoot [path] --claude       Claude Code"
+  echo "  graperoot [path] --codex        OpenAI Codex"
+  echo "  graperoot [path] --cursor       Cursor IDE"
+  echo "  graperoot [path] --gemini       Google Gemini CLI"
+  echo "  graperoot [path] --opencode     OpenCode"
+  echo "  graperoot [path] --copilot      GitHub Copilot (VS Code)"
+  echo "  graperoot [path] --antigravity  Google Antigravity"
   echo ""
   echo "  Shortcuts:"
   echo "    dgc [path]   →  graperoot [path] --claude"
@@ -2374,7 +2422,7 @@ CURRENT_STEP="Pre-flight checks"
 
 # 1. Verify the CLI tool is installed and in PATH (should already be fixed at registration step, but double-check)
 # For cursor/copilot, bin was resolved at registration; skip the PATH check.
-if [[ "$ASSISTANT" != "cursor" && "$ASSISTANT" != "copilot" ]] && ! command -v "$ASSISTANT" &>/dev/null; then
+if [[ "$ASSISTANT" != "cursor" && "$ASSISTANT" != "copilot" && "$ASSISTANT" != "antigravity" ]] && ! command -v "$ASSISTANT" &>/dev/null; then
   # Refresh PATH one more time
   export PATH="$PATH:$(npm config get prefix 2>/dev/null)/bin:$HOME/.npm-global/bin:$HOME/.local/bin"
   if ! command -v "$ASSISTANT" &>/dev/null; then
@@ -2406,7 +2454,7 @@ fi
 # 3. Quick smoke test — verify CLI responds (catches broken installs, missing deps)
 # cursor is validated via CURSOR_BIN at registration time; skip --version check for it.
 _SMOKE_BIN="${CURSOR_BIN:-${CODE_BIN:-$ASSISTANT}}"
-if [[ "$ASSISTANT" != "cursor" && "$ASSISTANT" != "copilot" ]] && ! "$_SMOKE_BIN" --version &>/dev/null 2>&1; then
+if [[ "$ASSISTANT" != "cursor" && "$ASSISTANT" != "copilot" && "$ASSISTANT" != "antigravity" ]] && ! "$_SMOKE_BIN" --version &>/dev/null 2>&1; then
   echo "[$TOOL_LABEL] WARNING: '$ASSISTANT --version' failed. The CLI may not work correctly."
   case "$ASSISTANT" in
     claude)   echo "[$TOOL_LABEL] Try reinstalling: npm install -g @anthropic-ai/claude-code" ;;
@@ -2427,9 +2475,11 @@ if ! kill -0 "$MCP_PID" 2>/dev/null; then
 fi
 
 # ── Launch CLI ───────────────────────────────────────────────────────────────
-echo ""
-echo "[$TOOL_LABEL] Starting $ASSISTANT..."
-echo ""
+if [[ "$ASSISTANT" != "antigravity" ]]; then
+  echo ""
+  echo "[$TOOL_LABEL] Starting $ASSISTANT..."
+  echo ""
+fi
 
 CURRENT_STEP="Changing to project directory"
 cd "$PROJECT" || {
@@ -2467,6 +2517,19 @@ elif [[ "$ASSISTANT" == "copilot" ]]; then
   echo "[$TOOL_LABEL] Press Ctrl+C to stop the MCP server when you are done."
   trap 'echo ""; echo "[$TOOL_LABEL] Shutting down MCP server (PID $MCP_PID)..."; kill "$MCP_PID" 2>/dev/null; rm -f "$RUN_DIR/mcp_server.pid" "$RUN_DIR/mcp_port"; exit 0' INT TERM HUP
   while true; do sleep 5 & wait $!; done
+elif [[ "$ASSISTANT" == "antigravity" ]]; then
+  # Antigravity CLI command is 'agy', not 'antigravity'
+  _LAUNCH_ARGS=()
+  [[ -n "$PROMPT" ]] && _LAUNCH_ARGS+=("$PROMPT")
+  [[ ${#CLAUDE_EXTRA_ARGS[@]} -gt 0 ]] && _LAUNCH_ARGS+=("${CLAUDE_EXTRA_ARGS[@]}")
+  trap 'echo ""; echo "[$TOOL_LABEL] Shutting down MCP server (PID $MCP_PID)..."; kill "$MCP_PID" 2>/dev/null; rm -f "$RUN_DIR/mcp_server.pid" "$RUN_DIR/mcp_port"; exit 130' INT TERM HUP
+  echo "[$TOOL_LABEL] Starting Antigravity..."
+  echo ""
+  if [[ ${#_LAUNCH_ARGS[@]} -gt 0 ]]; then
+    agy "${_LAUNCH_ARGS[@]}" 2>"$RUN_DIR/assistant_stderr.log"
+  else
+    agy 2>"$RUN_DIR/assistant_stderr.log"
+  fi
 else
   # Build launch args: optional prompt + all passthrough flags
   _LAUNCH_ARGS=()

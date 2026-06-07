@@ -14,4 +14,4 @@ if [[ "${1:-}" == "audit" ]]; then
   exec "$SCRIPT_DIR/dual_graph_launch.sh" audit "${@:2}"
 fi
 
-exec "$SCRIPT_DIR/dual_graph_launch.sh" codex "$@"
+exec "$SCRIPT_DIR/dual_graph_launch.sh" codex --toolname codex "$@"

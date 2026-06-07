@@ -2,10 +2,11 @@
 # graperoot — Dual-Graph launcher with AI tool selection
 #
 # Usage:
-#   graperoot [path] --claude    # Claude Code  (same as dgc)
-#   graperoot [path] --codex     # OpenAI Codex (same as dg)
-#   graperoot [path] --cursor    # Cursor IDE
-#   graperoot [path] --gemini    # Google Gemini CLI
+#   graperoot [path] --claude       # Claude Code  (same as dgc)
+#   graperoot [path] --codex        # OpenAI Codex (same as dg)
+#   graperoot [path] --cursor       # Cursor IDE
+#   graperoot [path] --gemini       # Google Gemini CLI
+#   graperoot [path] --antigravity  # Google Antigravity
 #
 # The tool flag can come before or after the path.
 # Flags can be written with or without --  (e.g. cursor or --cursor).
@@ -32,12 +33,13 @@ _show_help() {
     graperoot [path] <tool> [options]
 
   Tools:
-    --claude    Claude Code   (shorthand: dgc [path])
-    --codex     OpenAI Codex  (shorthand: dg  [path])
-    --cursor    Cursor IDE
-    --gemini    Google Gemini CLI
-    --opencode  OpenCode
-    --copilot   GitHub Copilot (VS Code)
+    --claude       Claude Code   (shorthand: dgc [path])
+    --codex        OpenAI Codex  (shorthand: dg  [path])
+    --cursor       Cursor IDE
+    --gemini       Google Gemini CLI
+    --opencode     OpenCode
+    --copilot      GitHub Copilot (VS Code)
+    --antigravity  Google Antigravity
 
   Options:
     --resume <id>    Resume a previous claude / codex session
@@ -49,6 +51,7 @@ _show_help() {
     graperoot /my/project --gemini
     graperoot /my/project --opencode
     graperoot /my/project --copilot
+    graperoot /my/project --antigravity
     graperoot /my/project --claude --resume <session-id>
     dgc .                          # same as graperoot . --claude
     dg  .                          # same as graperoot . --codex
@@ -65,7 +68,7 @@ ASSISTANT="claude"   # default
 PROJECT=""
 PASSTHROUGH=()
 
-_VALID_TOOLS="claude codex cursor gemini opencode copilot"
+_VALID_TOOLS="claude codex cursor gemini opencode copilot antigravity"
 _TOOL_SET=false
 
 ARGS=("$@")
@@ -73,12 +76,13 @@ i=0
 while (( i < ${#ARGS[@]} )); do
   arg="${ARGS[$i]}"
   case "$arg" in
-    --claude|claude)     ASSISTANT="claude";   _TOOL_SET=true ;;
-    --codex|codex)       ASSISTANT="codex";    _TOOL_SET=true ;;
-    --cursor|cursor)     ASSISTANT="cursor";   _TOOL_SET=true ;;
-    --gemini|gemini)     ASSISTANT="gemini";   _TOOL_SET=true ;;
-    --opencode|opencode) ASSISTANT="opencode"; _TOOL_SET=true ;;
-    --copilot|copilot)   ASSISTANT="copilot";  _TOOL_SET=true ;;
+    --claude|claude)            ASSISTANT="claude";      _TOOL_SET=true ;;
+    --codex|codex)             ASSISTANT="codex";       _TOOL_SET=true ;;
+    --cursor|cursor)           ASSISTANT="cursor";      _TOOL_SET=true ;;
+    --gemini|gemini)           ASSISTANT="gemini";      _TOOL_SET=true ;;
+    --opencode|opencode)       ASSISTANT="opencode";    _TOOL_SET=true ;;
+    --copilot|copilot)         ASSISTANT="copilot";     _TOOL_SET=true ;;
+    --antigravity|antigravity) ASSISTANT="antigravity"; _TOOL_SET=true ;;
     --toolname)
       PASSTHROUGH+=("$arg")
       if (( i + 1 < ${#ARGS[@]} )) && [[ "${ARGS[$((i + 1))]}" != --* ]]; then
@@ -121,5 +125,5 @@ fi
 
 [[ -z "$PROJECT" ]] && PROJECT="$(pwd)"
 
-exec "$SCRIPT_DIR/dual_graph_launch.sh" "$ASSISTANT" "$PROJECT" \
+exec "$SCRIPT_DIR/dual_graph_launch.sh" "$ASSISTANT" "$PROJECT" --toolname graperoot \
   "${PASSTHROUGH[@]+"${PASSTHROUGH[@]}"}"

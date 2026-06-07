@@ -29,7 +29,9 @@ Follow this checklist **exactly** when bumping a version. All three repos must s
 | `audit`, `undo_shield` | PyPI (`graperoot`) | compiled `.so` / `.pyd` |
 | `mcp_graph_server` | PyPI (`graperoot`) | plain `.py` (async decorators incompatible with Cython) |
 | `dual_graph_launch.sh` | R2 CDN + GitHub | shell script |
-| `dgc`, `dg`, `graperoot` launchers | GitHub only | shell/cmd scripts |
+| `dgc.ps1`, `dg.ps1`, `graperoot.ps1` | R2 CDN + GitHub | PowerShell launchers |
+| `dgc.cmd`, `dg.cmd`, `graperoot.cmd` | R2 CDN + GitHub | Windows CMD bootstraps |
+| `dgc`, `dg`, `dgo`, `graperoot` | GitHub only | bash launchers |
 | `install.ps1`, `install.sh` | R2 CDN + GitHub | installer scripts |
 
 **audit.py and undo_shield.py are NOT standalone files anymore** — they ship as compiled
@@ -59,12 +61,20 @@ X.Y.Z
 
 ```
 
-Then copy to Core:
+Then copy launcher/installer files to Core (Core's `sync-r2.yml` syncs its entire root to R2 on every push):
 ```bash
-cp bin/changelog.txt ../Claude-CLI-Compact-core/changelog.txt
-cp bin/dual_graph_launch.sh ../Claude-CLI-Compact-core/dual_graph_launch.sh
+cp bin/changelog.txt          ../Claude-CLI-Compact-core/changelog.txt
+cp bin/dual_graph_launch.sh   ../Claude-CLI-Compact-core/dual_graph_launch.sh
+cp bin/dgc.ps1                ../Claude-CLI-Compact-core/dgc.ps1
+cp bin/dg.ps1                 ../Claude-CLI-Compact-core/dg.ps1
+cp bin/graperoot.ps1          ../Claude-CLI-Compact-core/graperoot.ps1
+cp bin/dgc.cmd                ../Claude-CLI-Compact-core/dgc.cmd
+cp bin/dg.cmd                 ../Claude-CLI-Compact-core/dg.cmd
+cp bin/graperoot.cmd          ../Claude-CLI-Compact-core/graperoot.cmd
+cp install.ps1                ../Claude-CLI-Compact-core/install.ps1
+cp install.sh                 ../Claude-CLI-Compact-core/install.sh
 ```
-**Why:** `sync-r2.yml` in Core runs `aws s3 sync .` on every push — it overwrites R2's `dual_graph_launch.sh` with whatever is in the Core repo root. Always keep them in sync.
+**Why:** `sync-r2.yml` in Core runs `aws s3 sync .` on every push — it overwrites R2 with whatever is in the Core repo root. Always keep them in sync. Only copy files that actually changed (check `git diff`).
 
 The changelog is shown to users on auto-update. **Never push a version without updating it.**
 
@@ -90,7 +100,9 @@ printf "X.Y.Z" > ~/Documents/Open\ source/Claude-CLI-Compact-core/version.txt
 ```bash
 cd ~/Documents/Open\ source/beads-main/dual-graph-dashboard
 git add bin/version.txt bin/changelog.txt README.md \
-        bin/dual_graph_launch.sh install.ps1  # add any other changed files
+        bin/dual_graph_launch.sh bin/dgc.ps1 bin/dg.ps1 bin/graperoot.ps1 \
+        bin/dgc.cmd bin/dg.cmd bin/graperoot.cmd bin/graperoot \
+        install.ps1 install.sh  # add any other changed files
 git commit -m "X.Y.Z: <short description>"
 ```
 
@@ -120,9 +132,11 @@ In `scoop-dual-graph/bucket/dual-graph.json`, update:
 ### 8. Commit Core and Scoop
 
 ```bash
-# Core — always include changelog.txt + version files; add any changed source files
+# Core — always include changelog.txt + version files + synced launchers; add any changed source files
 cd ~/Documents/Open\ source/Claude-CLI-Compact-core
-git add src/graperoot/__init__.py pyproject.toml changelog.txt version.txt  # + any changed .py files
+git add src/graperoot/__init__.py pyproject.toml changelog.txt version.txt \
+        dual_graph_launch.sh dgc.ps1 dg.ps1 graperoot.ps1 \
+        dgc.cmd dg.cmd graperoot.cmd install.ps1 install.sh  # + any changed .py files
 git commit -m "X.Y.Z: <description>"
 
 # Scoop
@@ -167,10 +181,14 @@ Monitor the build at:
 
 ### 11. Upload to Cloudflare R2 (MANDATORY — always do this)
 
-R2 is the fallback CDN for `dual_graph_launch.sh` and installer scripts.
+R2 is the fallback CDN for launchers and installer scripts.
 
 **IMPORTANT:** Only upload launcher/installer files from Dashboard. Do NOT upload Python
 source files — those ship via the graperoot pip package (compiled .so) now.
+
+**Note:** Core's `sync-r2.yml` also syncs to R2 on push, but pushing Core happens *after*
+Dashboard, so manually uploading here ensures R2 is fresh immediately. If you pushed Core
+with the synced files (step 8), R2 gets updated again automatically — no harm.
 
 ```bash
 cd ~/Documents/Open\ source/beads-main/dual-graph-dashboard
@@ -181,7 +199,11 @@ aws s3 cp bin/dual_graph_launch.sh s3://dual-graph-core/dual_graph_launch.sh --e
 aws s3 cp bin/dg.ps1              s3://dual-graph-core/dg.ps1               --endpoint-url "$R2" --profile r2
 aws s3 cp bin/dgc.ps1             s3://dual-graph-core/dgc.ps1              --endpoint-url "$R2" --profile r2
 aws s3 cp bin/graperoot.ps1       s3://dual-graph-core/graperoot.ps1        --endpoint-url "$R2" --profile r2
+aws s3 cp bin/dgc.cmd             s3://dual-graph-core/dgc.cmd              --endpoint-url "$R2" --profile r2
+aws s3 cp bin/dg.cmd              s3://dual-graph-core/dg.cmd               --endpoint-url "$R2" --profile r2
+aws s3 cp bin/graperoot.cmd       s3://dual-graph-core/graperoot.cmd        --endpoint-url "$R2" --profile r2
 aws s3 cp install.ps1             s3://dual-graph-core/install.ps1          --endpoint-url "$R2" --profile r2
+aws s3 cp install.sh              s3://dual-graph-core/install.sh           --endpoint-url "$R2" --profile r2
 aws s3 cp bin/changelog.txt       s3://dual-graph-core/changelog.txt        --endpoint-url "$R2" --profile r2
 
 # Always update version.txt LAST (use printf, not echo — avoids trailing newline):
@@ -311,7 +333,7 @@ When adding or editing compiled modules, follow these rules or the wheel build w
 
 ## Backwards compatibility checklist
 
-Before releasing any change to `dual_graph_launch.sh` or `dgc.ps1`, verify:
+Before releasing any change to `dual_graph_launch.sh`, `dgc.ps1`, `graperoot`, or `graperoot.ps1`, verify:
 
 | Command | Expected outcome |
 |---------|-----------------|
@@ -321,6 +343,15 @@ Before releasing any change to `dual_graph_launch.sh` or `dgc.ps1`, verify:
 | `dgc --resume SESSION_ID` | Uses `pwd`, resumes session |
 | `dgc audit /path/to/project` | Runs compiled graperoot.audit module |
 | `dgc audit /path --fix` | Runs audit then launches dgc with context |
+| `dgc --opencode` | Delegates to graperoot.ps1/graperoot --opencode |
+| `graperoot /path --claude` | Same as `dgc /path` |
+| `graperoot /path --codex` | Launches OpenAI Codex with dual-graph |
+| `graperoot /path --cursor` | Launches Cursor with dual-graph |
+| `graperoot /path --opencode` | Launches opencode with dual-graph |
+| `graperoot /path --gemini` | Launches Gemini CLI with dual-graph |
+| `graperoot /path --copilot` | Launches GitHub Copilot with dual-graph |
+| `dgo /path` | Launches opencode (shortcut for graperoot --opencode) |
+| `dgc --toolname graperoot` | Passes toolname to telemetry/MCP server |
 
 ## Common mistakes
 
@@ -335,6 +366,8 @@ Before releasing any change to `dual_graph_launch.sh` or `dgc.ps1`, verify:
 - **Pushing scoop before dashboard** — the scoop URL will 404 until the Dashboard commit exists on GitHub.
 - **Version not highest** — always check all three repos; they can drift independently.
 - **Uploading audit.py/undo_shield.py to R2** — these are now compiled into the pip package. Do not put them on R2.
+- **Forgetting to copy `.cmd` files to Core** — `graperoot.cmd` downloads `dgc.cmd` and `dg.cmd` from R2; if Core's copies are stale, Windows users get old bootstraps.
+- **Forgetting `install.sh` in Core** — `sync-r2.yml` syncs it to R2; stale copy means Linux/Mac curl-pipe-bash installs get old code.
 - **Cython dict annotation** — `x: dict[K,V] = defaultdict(...)` fails at runtime in compiled modules. Drop the annotation.
 
 ## Pip / dependency versions

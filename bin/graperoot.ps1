@@ -3,12 +3,13 @@
 # For --claude and --codex, delegates to dgc.ps1 / dg.ps1.
 #
 # Usage:
-#   graperoot [path] --claude    Claude Code  (default)
-#   graperoot [path] --codex     OpenAI Codex
-#   graperoot [path] --cursor    Cursor IDE
-#   graperoot [path] --gemini    Google Gemini CLI
-#   graperoot [path] --opencode  OpenCode
-#   graperoot [path] --copilot   GitHub Copilot (VS Code)
+#   graperoot [path] --claude       Claude Code  (default)
+#   graperoot [path] --codex        OpenAI Codex
+#   graperoot [path] --cursor       Cursor IDE
+#   graperoot [path] --gemini       Google Gemini CLI
+#   graperoot [path] --opencode     OpenCode
+#   graperoot [path] --copilot      GitHub Copilot (VS Code)
+#   graperoot [path] --antigravity  Google Antigravity
 
 param(
     [Parameter(Position = 0)] [string]$Arg0 = ".",
@@ -21,7 +22,8 @@ param(
     [switch]$gemini,
     [switch]$opencode,
     [switch]$copilot,
-    [string]$toolname = ""
+    [switch]$antigravity,
+    [string]$toolname = "graperoot"
 )
 
 $ErrorActionPreference = "Continue"
@@ -35,12 +37,13 @@ if ($Arg0 -in @("--help","-h","?","/?")) {
     Write-Host "    graperoot [path] <tool> [options]"
     Write-Host ""
     Write-Host "  Tools:"
-    Write-Host "    --claude    Claude Code   (shorthand: dgc [path])"
-    Write-Host "    --codex     OpenAI Codex  (shorthand: dg  [path])"
-    Write-Host "    --cursor    Cursor IDE"
-    Write-Host "    --gemini    Google Gemini CLI"
-    Write-Host "    --opencode  OpenCode"
-    Write-Host "    --copilot   GitHub Copilot (VS Code)"
+    Write-Host "    --claude       Claude Code   (shorthand: dgc [path])"
+    Write-Host "    --codex        OpenAI Codex  (shorthand: dg  [path])"
+    Write-Host "    --cursor       Cursor IDE"
+    Write-Host "    --gemini       Google Gemini CLI"
+    Write-Host "    --opencode     OpenCode"
+    Write-Host "    --copilot      GitHub Copilot (VS Code)"
+    Write-Host "    --antigravity  Google Antigravity"
     Write-Host ""
     Write-Host "  Options:"
     Write-Host "    --resume <id>    Resume a previous claude / codex session"
@@ -52,6 +55,7 @@ if ($Arg0 -in @("--help","-h","?","/?")) {
     Write-Host "    graperoot C:\my\project --gemini"
     Write-Host "    graperoot C:\my\project --opencode"
     Write-Host "    graperoot C:\my\project --copilot"
+    Write-Host "    graperoot C:\my\project --antigravity"
     Write-Host "    graperoot C:\my\project --claude --resume <session-id>"
     Write-Host "    dgc .                        # same as graperoot . --claude"
     Write-Host "    dg  .                        # same as graperoot . --codex"
@@ -75,19 +79,20 @@ $env:DG_TOOLNAME = $RuntimeToolName
 $Assistant   = "claude"   # default
 $ProjectPath = ""
 $Passthrough = @()
-$_validTools = @("claude","codex","cursor","gemini","opencode","copilot")
+$_validTools = @("claude","codex","cursor","gemini","opencode","copilot","antigravity")
 $_toolSet    = $false
 $_inputArgs  = @($Arg0, $Arg1, $Arg2)
 if ($args) { $_inputArgs += $args }
 $_inputArgs = @($_inputArgs | Where-Object { $_ })
 
 # Honour switch params (e.g. --opencode passed as PowerShell named switch)
-if ($opencode)  { $Assistant = "opencode"; $_toolSet = $true }
-elseif ($cursor)  { $Assistant = "cursor";   $_toolSet = $true }
-elseif ($gemini)  { $Assistant = "gemini";   $_toolSet = $true }
-elseif ($copilot) { $Assistant = "copilot";  $_toolSet = $true }
-elseif ($codex)   { $Assistant = "codex";    $_toolSet = $true }
-elseif ($claude)  { $Assistant = "claude";   $_toolSet = $true }
+if ($opencode)      { $Assistant = "opencode";     $_toolSet = $true }
+elseif ($cursor)      { $Assistant = "cursor";       $_toolSet = $true }
+elseif ($gemini)      { $Assistant = "gemini";       $_toolSet = $true }
+elseif ($copilot)     { $Assistant = "copilot";      $_toolSet = $true }
+elseif ($antigravity) { $Assistant = "antigravity";  $_toolSet = $true }
+elseif ($codex)       { $Assistant = "codex";        $_toolSet = $true }
+elseif ($claude)      { $Assistant = "claude";       $_toolSet = $true }
 
 $_argIndex = 0
 while ($_argIndex -lt $_inputArgs.Count) {
@@ -97,7 +102,8 @@ while ($_argIndex -lt $_inputArgs.Count) {
     if ($arg -in @("--cursor","cursor"))     { $Assistant = "cursor";   $_toolSet = $true; $_argIndex++; continue }
     if ($arg -in @("--gemini","gemini"))     { $Assistant = "gemini";   $_toolSet = $true; $_argIndex++; continue }
     if ($arg -in @("--opencode","opencode")) { $Assistant = "opencode"; $_toolSet = $true; $_argIndex++; continue }
-    if ($arg -in @("--copilot","copilot"))   { $Assistant = "copilot";  $_toolSet = $true; $_argIndex++; continue }
+    if ($arg -in @("--copilot","copilot"))       { $Assistant = "copilot";      $_toolSet = $true; $_argIndex++; continue }
+    if ($arg -in @("--antigravity","antigravity")) { $Assistant = "antigravity"; $_toolSet = $true; $_argIndex++; continue }
     if ($arg -match '^-{1,2}toolname=(.*)$') {
         $RuntimeToolName = Normalize-ToolName $Matches[1]
         $env:DG_TOOLNAME = $RuntimeToolName
@@ -204,6 +210,9 @@ if ($_RemoteVer -and ($_LocalVer -eq "0" -or ([version]$_RemoteVer -gt [version]
     _dl "$_R2/dgc.cmd"              "$_BaseUrl/bin/dgc.cmd"              (Join-Path $DG "dgc.cmd")
     _dl "$_R2/dg.cmd"               "$_BaseUrl/bin/dg.cmd"               (Join-Path $DG "dg.cmd")
     _dl "$_R2/dual_graph_launch.sh" "$_BaseUrl/bin/dual_graph_launch.sh" (Join-Path $DG "dual_graph_launch.sh")
+    # Upgrade graperoot Python package so graph-builder.exe + mcp-graph-server.exe stay current
+    $venvPip = Join-Path $DG "venv\Scripts\pip.exe"
+    if (Test-Path $venvPip) { & $venvPip install graperoot --upgrade --quiet 2>$null }
     try { $_RemoteVer | Set-Content -Path $_VerFile -Encoding UTF8 } catch {}
     Write-Host "[$Tool] Updated to $_RemoteVer. Restarting..."
     $_newScript = Join-Path $DG "graperoot.ps1"
@@ -311,14 +320,35 @@ if (-not (Get-Command rg -ErrorAction SilentlyContinue)) {
 }
 
 # -- Build graph ----------------------------------------------------------------
-$GraphExe = Join-Path $DG "venv\Scripts\graph_builder.exe"
+$GraphExe = Join-Path $DG "venv\Scripts\graph-builder.exe"
 $GraphPy  = $null
+$GraphModule = $false
 if (-not (Test-Path $GraphExe)) {
-    # Find graph_builder.py from installed graperoot package
-    $pkgDir = & $Python -c "import graperoot, os; print(os.path.dirname(graperoot.__file__))" 2>$null
-    if ($pkgDir) {
-        $candidate = Join-Path $pkgDir "graph_builder.py"
-        if (Test-Path $candidate) { $GraphPy = $candidate }
+    # Check if graph_builder is importable as a module (.pyd/.so or .py)
+    $moduleCheck = & $Python -c "import graperoot.graph_builder; print('ok')" 2>$null
+    if ($moduleCheck -eq "ok") {
+        $GraphModule = $true
+    } else {
+        # Find graph_builder.py from installed graperoot package
+        $pkgDir = & $Python -c "import graperoot, os; print(os.path.dirname(graperoot.__file__))" 2>$null
+        if ($pkgDir) {
+            $candidate = Join-Path $pkgDir "graph_builder.py"
+            if (Test-Path $candidate) { $GraphPy = $candidate }
+        }
+    }
+    # Auto-repair: if nothing works, reinstall graperoot
+    if (-not $GraphModule -and -not $GraphPy) {
+        Write-Host "[$Tool] graph-builder not found - reinstalling graperoot..."
+        $pip = Join-Path $DG "venv\Scripts\pip.exe"
+        if (Test-Path $pip) {
+            & $pip install graperoot --upgrade --quiet --no-cache-dir 2>$null
+            if (Test-Path $GraphExe) {
+                Write-Host "[$Tool] graperoot reinstalled successfully."
+            } else {
+                $moduleCheck = & $Python -c "import graperoot.graph_builder; print('ok')" 2>$null
+                if ($moduleCheck -eq "ok") { $GraphModule = $true }
+            }
+        }
     }
 }
 Write-Host "[$Tool] Scanning project..."
@@ -326,10 +356,13 @@ $InfoGraph = Join-Path $DataDir "info_graph.json"
 try {
     if (Test-Path $GraphExe) {
         & $GraphExe --root $ProjectPath --out $InfoGraph 2>&1 | ForEach-Object { Write-Host $_ }
+    } elseif ($GraphModule) {
+        & $Python -c "from graperoot.graph_builder import main; main()" --root $ProjectPath --out $InfoGraph 2>&1 | ForEach-Object { Write-Host $_ }
     } elseif ($GraphPy) {
         & $Python $GraphPy --root $ProjectPath --out $InfoGraph 2>&1 | ForEach-Object { Write-Host $_ }
     } else {
         Write-Host "[$Tool] WARNING: graph_builder not found - continuing without context graph."
+        Write-Host "[$Tool]   Fix: & `"$DG\venv\Scripts\pip.exe`" install graperoot --upgrade --force-reinstall"
     }
 } catch {
     Write-Host "[$Tool] WARNING: graph scan failed - continuing without context graph."
@@ -358,14 +391,24 @@ $McpPidFile = Join-Path $DataDir "mcp_server.pid"
 
 Set-Content -Path $McpPortFile -Value $McpPort
 $env:DG_TOOLNAME = $RuntimeToolName
+$env:DG_DATA_DIR = $DataDir
+$env:DUAL_GRAPH_PROJECT_ROOT = $ProjectPath
+$env:PORT = $McpPort
 
 Write-Host "[$Tool] Port    : $McpPort"
 Write-Host "[$Tool] Waiting for MCP server..."
 
-$mcpProc = Start-Process -FilePath $Python `
-    -ArgumentList @($McpServer, "--port", $McpPort, "--data-dir", $DataDir) `
-    -RedirectStandardOutput $McpLog -RedirectStandardError "$McpLog.err" `
-    -PassThru -WindowStyle Hidden
+$McpExe = Join-Path $DG "venv\Scripts\mcp-graph-server.exe"
+if (Test-Path $McpExe) {
+    $mcpProc = Start-Process -FilePath $McpExe `
+        -RedirectStandardOutput $McpLog -RedirectStandardError "$McpLog.err" `
+        -PassThru -WindowStyle Hidden
+} else {
+    $mcpProc = Start-Process -FilePath $Python `
+        -ArgumentList @($McpServer) `
+        -RedirectStandardOutput $McpLog -RedirectStandardError "$McpLog.err" `
+        -PassThru -WindowStyle Hidden
+}
 
 Set-Content -Path $McpPidFile -Value $mcpProc.Id
 
@@ -586,6 +629,55 @@ if ($Assistant -eq "copilot") {
     Write-Host "[$Tool] MCP server running on port $McpPort"
     Write-Host "[$Tool] Press Ctrl+C to stop the MCP server when you are done."
     try { $mcpProc.WaitForExit() } catch { Start-Sleep -Seconds 86400 }
+}
+
+# -- Antigravity: write ~/.gemini/antigravity-cli/mcp_config.json and launch ---
+if ($Assistant -eq "antigravity") {
+    if (-not (Get-Command agy -ErrorAction SilentlyContinue)) {
+        Write-Host "[$Tool] agy (Antigravity CLI) not found - installing..."
+        try {
+            $agInstaller = Invoke-WebRequest "https://antigravity.google/cli/install.ps1" -UseBasicParsing -TimeoutSec 30
+            Invoke-Expression $agInstaller.Content
+        } catch {}
+        # Refresh PATH in case installer added agy to a new location
+        $env:PATH = [System.Environment]::GetEnvironmentVariable("PATH", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("PATH", "User")
+        if (-not (Get-Command agy -ErrorAction SilentlyContinue)) {
+            Write-Host "[$Tool] ERROR: could not auto-install Antigravity CLI."
+            Write-Host "[$Tool]   irm https://antigravity.google/cli/install.ps1 | iex"
+            Stop-Process -Id $mcpProc.Id -Force -ErrorAction SilentlyContinue
+            exit 1
+        }
+        Write-Host "[$Tool] Antigravity CLI installed."
+    }
+
+    $AgDir  = Join-Path $env:USERPROFILE ".gemini\antigravity-cli"
+    New-Item -ItemType Directory -Force -Path $AgDir | Out-Null
+    $AgConf = Join-Path $AgDir "mcp_config.json"
+    $agExisting = [PSCustomObject]@{ mcpServers = [PSCustomObject]@{} }
+    if (Test-Path $AgConf) {
+        try {
+            $parsed = Get-Content $AgConf -Raw | ConvertFrom-Json
+            if ($parsed) { $agExisting = $parsed }
+        } catch {}
+    }
+    if (-not $agExisting.mcpServers) {
+        $agExisting | Add-Member -NotePropertyName "mcpServers" -NotePropertyValue ([PSCustomObject]@{}) -Force
+    }
+    $agExisting.mcpServers | Add-Member -NotePropertyName "dual-graph" `
+        -NotePropertyValue ([PSCustomObject]@{ url = "http://127.0.0.1:$McpPort/mcp" }) -Force
+    $agTmp = [System.IO.Path]::GetTempFileName()
+    [System.IO.File]::WriteAllText($agTmp, ($agExisting | ConvertTo-Json -Depth 5 -Compress))
+    & $Python -c "import json,sys;d=json.load(open(sys.argv[1]));open(sys.argv[2],'w',encoding='utf-8').write(json.dumps(d,indent=2)+'\n')" $agTmp $AgConf
+    Remove-Item $agTmp -ErrorAction SilentlyContinue
+
+    Write-Host "[$Tool] MCP config written -> $AgConf"
+    Write-Host "[$Tool] MCP URL: http://127.0.0.1:$McpPort/mcp"
+    Write-Host ""
+
+    Set-Location $ProjectPath
+    Write-Host "[$Tool] Starting Antigravity..."
+    Write-Host ""
+    agy
 }
 
 # Cleanup
