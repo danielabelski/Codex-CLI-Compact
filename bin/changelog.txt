@@ -1,3 +1,9 @@
+3.9.93
+- Fixed: Antigravity MCP key (url → serverUrl) and rules file (.agent/rules/graperoot.md)
+- Fixed: Cursor now writes .cursor/rules/graperoot.mdc (was writing CLAUDE.md which Cursor doesn't read)
+- Fixed: OpenCode now writes AGENTS.md (was writing CLAUDE.md which OpenCode doesn't read)
+- Added: Rules file writing for all tools on Windows (Gemini→GEMINI.md, Copilot→CLAUDE.md, OpenCode→AGENTS.md)
+
 3.9.92
 - Added: --antigravity flag (Google Antigravity IDE support) across all platforms
 - Fixed: graph_builder not found on Windows (underscore→hyphen exe name, module fallback)

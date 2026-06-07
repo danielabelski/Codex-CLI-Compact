@@ -605,8 +605,22 @@ elif [[ "$ASSISTANT" == "gemini" ]]; then
   DOC_FILE="$PROJECT/GEMINI.md"
   DOC_NAME="GEMINI.md"
   POLICY_MARKER="dgc-policy-v11"
+elif [[ "$ASSISTANT" == "antigravity" ]]; then
+  mkdir -p "$PROJECT/.agent/rules"
+  DOC_FILE="$PROJECT/.agent/rules/graperoot.md"
+  DOC_NAME=".agent/rules/graperoot.md"
+  POLICY_MARKER="dgc-policy-v11"
+elif [[ "$ASSISTANT" == "cursor" ]]; then
+  mkdir -p "$PROJECT/.cursor/rules"
+  DOC_FILE="$PROJECT/.cursor/rules/graperoot.mdc"
+  DOC_NAME=".cursor/rules/graperoot.mdc"
+  POLICY_MARKER="dgc-policy-v11"
+elif [[ "$ASSISTANT" == "opencode" ]]; then
+  DOC_FILE="$PROJECT/AGENTS.md"
+  DOC_NAME="AGENTS.md"
+  POLICY_MARKER="dgc-policy-v11"
 else
-  # claude, cursor, copilot share CLAUDE.md as their context policy file
+  # claude, copilot share CLAUDE.md as their context policy file
   DOC_FILE="$PROJECT/CLAUDE.md"
   DOC_NAME="CLAUDE.md"
   POLICY_MARKER="dgc-policy-v11"
@@ -1237,9 +1251,74 @@ Keep \`CONTEXT.md\` under 20 lines total. Do NOT summarize the full conversation
 EOF
 }
 
+_write_cursor_policy_doc() {
+  cat > "$DOC_FILE" << EOF
+---
+description: Dual-Graph context retrieval policy
+alwaysApply: true
+---
+<!-- $POLICY_MARKER -->
+# Dual-Graph Context Policy
+
+This project uses a local dual-graph MCP server for efficient context retrieval.
+
+## MANDATORY: Always follow this order
+
+1. **Call \`graph_continue\` first** — before any file exploration, grep, or code reading.
+
+2. **If \`graph_continue\` returns \`needs_project=true\`**: call \`graph_scan\` with the
+   current project directory (\`pwd\`). Do NOT ask the user.
+
+3. **If \`graph_continue\` returns \`skip=true\`**: project has fewer than 5 files.
+   Do NOT do broad or recursive exploration. Read only specific files if their names
+   are mentioned, or ask the user what to work on.
+
+4. **Read \`recommended_files\`** using \`graph_read\` — **one call per file**.
+   - \`graph_read\` accepts a single \`file\` parameter (string). Call it separately for each
+     recommended file. Do NOT pass an array or batch multiple files into one call.
+   - \`recommended_files\` may contain \`file::symbol\` entries (e.g. \`src/auth.ts::handleLogin\`).
+     Pass them verbatim to \`graph_read(file: "src/auth.ts::handleLogin")\` — it reads only
+     that symbol's lines, not the full file.
+
+5. **Check \`confidence\` and obey the caps strictly:**
+   - \`confidence=high\` -> Stop. Do NOT grep or explore further.
+   - \`confidence=medium\` -> If recommended files are insufficient, call \`fallback_rg\`
+     at most \`max_supplementary_greps\` time(s) with specific terms, then \`graph_read\`
+     at most \`max_supplementary_files\` additional file(s). Then stop.
+   - \`confidence=low\` -> Call \`fallback_rg\` at most \`max_supplementary_greps\` time(s),
+     then \`graph_read\` at most \`max_supplementary_files\` file(s). Then stop.
+
+## Rules
+
+- Do NOT use \`rg\`, \`grep\`, or bash file exploration before calling \`graph_continue\`.
+- Do NOT do broad/recursive exploration at any confidence level.
+- \`max_supplementary_greps\` and \`max_supplementary_files\` are hard caps - never exceed them.
+- Do NOT call \`graph_retrieve\` more than once per turn.
+- After edits, call \`graph_register_edit\` with the changed files. Use \`file::symbol\` notation (e.g. \`src/auth.ts::handleLogin\`) when the edit targets a specific function, class, or hook.
+
+## Context Store
+
+Whenever you make a decision, identify a task, note a next step, fact, or blocker during a conversation, call \`graph_add_memory\`.
+
+\`\`\`
+graph_add_memory(type="decision|task|next|fact|blocker", content="one sentence max 15 words", tags=["topic"], files=["relevant/file.ts"])
+\`\`\`
+
+**Do NOT write context-store.json directly** — always use \`graph_add_memory\`.
+
+**Rules:**
+- Only log things worth remembering across sessions (not every minor detail)
+- \`content\` must be under 15 words
+- \`files\` lists the files this decision/task relates to (can be empty)
+- Log immediately when the item arises — not at session end
+EOF
+}
+
 _write_policy_doc() {
   if [[ "$ASSISTANT" == "codex" ]]; then
     _write_codex_policy_doc
+  elif [[ "$ASSISTANT" == "cursor" ]]; then
+    _write_cursor_policy_doc
   else
     _write_claude_policy_doc
   fi
@@ -1400,6 +1479,9 @@ EOF
 _append_policy_doc() {
   if [[ "$ASSISTANT" == "codex" ]]; then
     _append_codex_policy_doc
+  elif [[ "$ASSISTANT" == "cursor" || "$ASSISTANT" == "antigravity" ]]; then
+    # These are files we own exclusively — just rewrite
+    _write_policy_doc
   else
     _append_claude_policy_doc
   fi
@@ -2220,7 +2302,7 @@ if os.path.exists(config_file):
     except Exception:
         pass
 servers = existing.get("mcpServers", {})
-servers["dual-graph"] = {"url": f"http://127.0.0.1:{port}/mcp"}
+servers["dual-graph"] = {"serverUrl": f"http://127.0.0.1:{port}/mcp"}
 existing["mcpServers"] = servers
 with open(config_file, "w", encoding="utf-8") as f:
     json.dump(existing, f, indent=2)

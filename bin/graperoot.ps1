@@ -463,6 +463,18 @@ if ($Assistant -eq "cursor") {
 
     Write-Host "[$Tool] MCP config written -> $McpJson"
     Write-Host "[$Tool] MCP URL: http://127.0.0.1:$McpPort/mcp"
+
+    # Write .cursor/rules/graperoot.mdc (Cursor reads rules from .cursor/rules/*.mdc)
+    $CursorRulesDir = Join-Path $ProjectPath ".cursor\rules"
+    New-Item -ItemType Directory -Force -Path $CursorRulesDir | Out-Null
+    $CursorRulesFile = Join-Path $CursorRulesDir "graperoot.mdc"
+    $CursorPolicyMarker = "dgc-policy-v11"
+    if ((-not (Test-Path $CursorRulesFile)) -or (-not (Select-String -Path $CursorRulesFile -Pattern $CursorPolicyMarker -Quiet))) {
+        Write-Host "[$Tool] Writing .cursor/rules/graperoot.mdc ..."
+        & $Python -c 'import sys,os;f=sys.argv[1];m=sys.argv[2];os.makedirs(os.path.dirname(f),exist_ok=True);open(f,"w",encoding="utf-8").write("---\ndescription: Dual-Graph context retrieval policy\nalwaysApply: true\n---\n<!-- "+m+" -->\n# Dual-Graph Context Policy\n\nThis project uses a local dual-graph MCP server for efficient context retrieval.\n\n## MANDATORY: Always follow this order\n\n1. **Call `graph_continue` first** - before any file exploration, grep, or code reading.\n2. **If `graph_continue` returns `needs_project=true`**: call `graph_scan` with the current project directory. Do NOT ask the user.\n3. **If `graph_continue` returns `skip=true`**: project has fewer than 5 files. Do NOT do broad exploration.\n4. **Read `recommended_files`** using `graph_read` - one call per file.\n5. **Check `confidence`** and obey the caps strictly:\n   - high -> Stop. Do NOT grep or explore further.\n   - medium -> At most 2 supplementary greps, then 2 additional files. Then stop.\n   - low -> At most 3 supplementary greps, then 3 additional files. Then stop.\n\n## Rules\n\n- Do NOT use grep or file exploration before calling `graph_continue`.\n- Do NOT do broad/recursive exploration at any confidence level.\n- After edits, call `graph_register_edit(files: [\"path/to/file\"])`.\n")' $CursorRulesFile $CursorPolicyMarker
+        Write-Host "[$Tool] .cursor/rules/graperoot.mdc written."
+    }
+
     Write-Host ""
     Write-Host "[$Tool] NOTE: activate dual-graph in Cursor (one-time setup):"
     Write-Host "[$Tool]   Cursor Settings -> Tools & MCP -> enable 'dual-graph'"
@@ -515,8 +527,17 @@ if ($Assistant -eq "gemini") {
 
     Write-Host "[$Tool] MCP config written -> $GeminiConf"
     Write-Host "[$Tool] MCP URL: http://127.0.0.1:$McpPort/mcp"
-    Write-Host ""
 
+    # Write/append GEMINI.md (Gemini CLI reads rules from GEMINI.md)
+    $GeminiMdFile = Join-Path $ProjectPath "GEMINI.md"
+    $GemPolicyMarker = "dgc-policy-v11"
+    if ((-not (Test-Path $GeminiMdFile)) -or (-not (Select-String -Path $GeminiMdFile -Pattern $GemPolicyMarker -Quiet))) {
+        Write-Host "[$Tool] Writing GEMINI.md policy ..."
+        & $Python -c 'import sys,os;f=sys.argv[1];m=sys.argv[2];existed=os.path.exists(f);content=open(f,"r",encoding="utf-8").read() if existed else "";sep="\n\n" if content and not content.endswith("\n\n") else ("\n" if content and not content.endswith("\n") else "");policy="<!-- "+m+" -->\n# Dual-Graph Context Policy\n\nThis project uses a local dual-graph MCP server for efficient context retrieval.\n\n## MANDATORY: Always follow this order\n\n1. **Call `graph_continue` first** - before any file exploration, grep, or code reading.\n2. **If `graph_continue` returns `needs_project=true`**: call `graph_scan` with the current project directory. Do NOT ask the user.\n3. **If `graph_continue` returns `skip=true`**: project has fewer than 5 files. Do NOT do broad exploration.\n4. **Read `recommended_files`** using `graph_read` - one call per file.\n5. **Check `confidence`** and obey the caps strictly:\n   - high -> Stop. Do NOT grep or explore further.\n   - medium -> At most 2 supplementary greps, then 2 additional files. Then stop.\n   - low -> At most 3 supplementary greps, then 3 additional files. Then stop.\n\n## Rules\n\n- Do NOT use grep or file exploration before calling `graph_continue`.\n- Do NOT do broad/recursive exploration at any confidence level.\n- After edits, call `graph_register_edit(files: [\"path/to/file\"])`.\n";open(f,"w",encoding="utf-8").write(content+sep+policy)' $GeminiMdFile $GemPolicyMarker
+        Write-Host "[$Tool] GEMINI.md updated."
+    }
+
+    Write-Host ""
     Set-Location $ProjectPath
     Write-Host "[$Tool] Starting gemini..."
     Write-Host ""
@@ -564,8 +585,17 @@ if ($Assistant -eq "opencode") {
 
     Write-Host "[$Tool] MCP config written -> $OpenCodeConf"
     Write-Host "[$Tool] MCP URL: http://127.0.0.1:$McpPort/mcp"
-    Write-Host ""
 
+    # Write/append AGENTS.md (OpenCode reads rules from AGENTS.md)
+    $AgentsFile = Join-Path $ProjectPath "AGENTS.md"
+    $OcPolicyMarker = "dgc-policy-v11"
+    if ((-not (Test-Path $AgentsFile)) -or (-not (Select-String -Path $AgentsFile -Pattern $OcPolicyMarker -Quiet))) {
+        Write-Host "[$Tool] Writing AGENTS.md policy ..."
+        & $Python -c 'import sys,os;f=sys.argv[1];m=sys.argv[2];existed=os.path.exists(f);content=open(f,"r",encoding="utf-8").read() if existed else "";sep="\n\n" if content and not content.endswith("\n\n") else ("\n" if content and not content.endswith("\n") else "");policy="<!-- "+m+" -->\n# Dual-Graph Context Policy\n\nThis project uses a local dual-graph MCP server for efficient context retrieval.\n\n## MANDATORY: Always follow this order\n\n1. **Call `graph_continue` first** - before any file exploration, grep, or code reading.\n2. **If `graph_continue` returns `needs_project=true`**: call `graph_scan` with the current project directory. Do NOT ask the user.\n3. **If `graph_continue` returns `skip=true`**: project has fewer than 5 files. Do NOT do broad exploration.\n4. **Read `recommended_files`** using `graph_read` - one call per file.\n5. **Check `confidence`** and obey the caps strictly:\n   - high -> Stop. Do NOT grep or explore further.\n   - medium -> At most 2 supplementary greps, then 2 additional files. Then stop.\n   - low -> At most 3 supplementary greps, then 3 additional files. Then stop.\n\n## Rules\n\n- Do NOT use grep or file exploration before calling `graph_continue`.\n- Do NOT do broad/recursive exploration at any confidence level.\n- After edits, call `graph_register_edit(files: [\"path/to/file\"])`.\n";open(f,"w",encoding="utf-8").write(content+sep+policy)' $AgentsFile $OcPolicyMarker
+        Write-Host "[$Tool] AGENTS.md updated."
+    }
+
+    Write-Host ""
     Set-Location $ProjectPath
     Write-Host "[$Tool] Starting opencode..."
     Write-Host ""
@@ -614,6 +644,16 @@ if ($Assistant -eq "copilot") {
 
     Write-Host "[$Tool] MCP config written -> $McpJson"
     Write-Host "[$Tool] MCP URL: http://127.0.0.1:$McpPort/mcp"
+
+    # Write/append CLAUDE.md (Copilot agent mode reads CLAUDE.md)
+    $ClaudeMdFile = Join-Path $ProjectPath "CLAUDE.md"
+    $CopPolicyMarker = "dgc-policy-v11"
+    if ((-not (Test-Path $ClaudeMdFile)) -or (-not (Select-String -Path $ClaudeMdFile -Pattern $CopPolicyMarker -Quiet))) {
+        Write-Host "[$Tool] Writing CLAUDE.md policy ..."
+        & $Python -c 'import sys,os;f=sys.argv[1];m=sys.argv[2];existed=os.path.exists(f);content=open(f,"r",encoding="utf-8").read() if existed else "";sep="\n\n" if content and not content.endswith("\n\n") else ("\n" if content and not content.endswith("\n") else "");policy="<!-- "+m+" -->\n# Dual-Graph Context Policy\n\nThis project uses a local dual-graph MCP server for efficient context retrieval.\n\n## MANDATORY: Always follow this order\n\n1. **Call `graph_continue` first** - before any file exploration, grep, or code reading.\n2. **If `graph_continue` returns `needs_project=true`**: call `graph_scan` with the current project directory. Do NOT ask the user.\n3. **If `graph_continue` returns `skip=true`**: project has fewer than 5 files. Do NOT do broad exploration.\n4. **Read `recommended_files`** using `graph_read` - one call per file.\n5. **Check `confidence`** and obey the caps strictly:\n   - high -> Stop. Do NOT grep or explore further.\n   - medium -> At most 2 supplementary greps, then 2 additional files. Then stop.\n   - low -> At most 3 supplementary greps, then 3 additional files. Then stop.\n\n## Rules\n\n- Do NOT use grep or file exploration before calling `graph_continue`.\n- Do NOT do broad/recursive exploration at any confidence level.\n- After edits, call `graph_register_edit(files: [\"path/to/file\"])`.\n";open(f,"w",encoding="utf-8").write(content+sep+policy)' $ClaudeMdFile $CopPolicyMarker
+        Write-Host "[$Tool] CLAUDE.md updated."
+    }
+
     Write-Host ""
     Write-Host "[$Tool] NOTE: enable dual-graph in VS Code (one-time setup):"
     Write-Host "[$Tool]   Copilot Chat panel -> Agent mode -> enable 'dual-graph'"
@@ -664,7 +704,7 @@ if ($Assistant -eq "antigravity") {
         $agExisting | Add-Member -NotePropertyName "mcpServers" -NotePropertyValue ([PSCustomObject]@{}) -Force
     }
     $agExisting.mcpServers | Add-Member -NotePropertyName "dual-graph" `
-        -NotePropertyValue ([PSCustomObject]@{ url = "http://127.0.0.1:$McpPort/mcp" }) -Force
+        -NotePropertyValue ([PSCustomObject]@{ serverUrl = "http://127.0.0.1:$McpPort/mcp" }) -Force
     $agTmp = [System.IO.Path]::GetTempFileName()
     [System.IO.File]::WriteAllText($agTmp, ($agExisting | ConvertTo-Json -Depth 5 -Compress))
     & $Python -c "import json,sys;d=json.load(open(sys.argv[1]));open(sys.argv[2],'w',encoding='utf-8').write(json.dumps(d,indent=2)+'\n')" $agTmp $AgConf
@@ -673,6 +713,17 @@ if ($Assistant -eq "antigravity") {
     Write-Host "[$Tool] MCP config written -> $AgConf"
     Write-Host "[$Tool] MCP URL: http://127.0.0.1:$McpPort/mcp"
     Write-Host ""
+
+    # Write .agent/rules/graperoot.md (Antigravity reads rules from .agent/rules/)
+    $AgRulesDir = Join-Path $ProjectPath ".agent\rules"
+    New-Item -ItemType Directory -Force -Path $AgRulesDir | Out-Null
+    $AgRulesFile = Join-Path $AgRulesDir "graperoot.md"
+    $AgPolicyMarker = "dgc-policy-v11"
+    if ((-not (Test-Path $AgRulesFile)) -or (-not (Select-String -Path $AgRulesFile -Pattern $AgPolicyMarker -Quiet))) {
+        Write-Host "[$Tool] Writing .agent/rules/graperoot.md ..."
+        & $Python -c 'import sys,os;f=sys.argv[1];m=sys.argv[2];os.makedirs(os.path.dirname(f),exist_ok=True);open(f,"w",encoding="utf-8").write("<!-- "+m+" -->\n# Dual-Graph Context Policy\n\nThis project uses a local dual-graph MCP server for efficient context retrieval.\n\n## MANDATORY: Always follow this order\n\n1. **Call `graph_continue` first** - before any file exploration, grep, or code reading.\n2. **If `graph_continue` returns `needs_project=true`**: call `graph_scan` with the current project directory. Do NOT ask the user.\n3. **If `graph_continue` returns `skip=true`**: project has fewer than 5 files. Do NOT do broad exploration.\n4. **Read `recommended_files`** using `graph_read` - one call per file.\n5. **Check `confidence`** and obey the caps strictly:\n   - high -> Stop. Do NOT grep or explore further.\n   - medium -> At most 2 supplementary greps, then 2 additional files. Then stop.\n   - low -> At most 3 supplementary greps, then 3 additional files. Then stop.\n\n## Rules\n\n- Do NOT use grep or file exploration before calling `graph_continue`.\n- Do NOT do broad/recursive exploration at any confidence level.\n- After edits, call `graph_register_edit(files: [\"path/to/file\"])`.\n")' $AgRulesFile $AgPolicyMarker
+        Write-Host "[$Tool] .agent/rules/graperoot.md written."
+    }
 
     Set-Location $ProjectPath
     Write-Host "[$Tool] Starting Antigravity..."
