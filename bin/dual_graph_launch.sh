@@ -2042,18 +2042,16 @@ PY
 
 
   # ── Token Counter MCP (global user scope — works in all projects) ────────
-  # Kill any leftover token-counter-mcp process so it can reclaim port 8899
   _TC_PORT_FILE="$HOME/.claude/token-counter/dashboard-port.txt"
-  if [[ -f "$_TC_PORT_FILE" ]]; then
-    _OLD_PORT=$(cat "$_TC_PORT_FILE")
-    lsof -ti tcp:"$_OLD_PORT" 2>/dev/null | xargs kill -9 2>/dev/null || true
-  fi
-  claude mcp remove token-counter --scope user >/dev/null 2>&1 || true
-  claude mcp remove token-counter >/dev/null 2>&1 || true
-  claude mcp add --scope user token-counter -- npx -y token-counter-mcp@latest >/dev/null 2>&1 || true
   _TC_PORT=8899
-  if [[ -f "$_TC_PORT_FILE" ]]; then _TC_PORT=$(cat "$_TC_PORT_FILE"); fi
-  echo "[$TOOL_LABEL] Token counter -> http://127.0.0.1:$_TC_PORT (global)"
+  if grep -q '"token-counter"' "$HOME/.claude.json" 2>/dev/null; then
+    if [[ -f "$_TC_PORT_FILE" ]]; then _TC_PORT=$(cat "$_TC_PORT_FILE"); fi
+    echo "[$TOOL_LABEL] Token counter already registered -> http://127.0.0.1:$_TC_PORT (global)"
+  else
+    claude mcp add --scope user token-counter -- npx -y token-counter-mcp@latest >/dev/null 2>&1 || true
+    if [[ -f "$_TC_PORT_FILE" ]]; then _TC_PORT=$(cat "$_TC_PORT_FILE"); fi
+    echo "[$TOOL_LABEL] Token counter -> http://127.0.0.1:$_TC_PORT (global)"
+  fi
   # ───────────────────────────────────────────────────────────────────────────
 
 elif [[ "$ASSISTANT" == "cursor" ]]; then

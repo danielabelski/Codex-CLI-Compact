@@ -1037,73 +1037,77 @@ Keep ``CONTEXT.md`` under 20 lines total. Do NOT summarize the full conversation
         # Use Continue so npm deprecation warnings on stderr don't become terminating errors.
         $prevEAP = $ErrorActionPreference; $ErrorActionPreference = "Continue"
         try {
-            # Remove from both project and user scope - the MCP is registered user-scope.
-            Remove-ClaudeMcpSafe "token-counter"
-            Remove-ClaudeMcpSafe "token-counter" -Scope "user"
-
-            $nodeCmd = (Get-Command node -ErrorAction SilentlyContinue).Source
-            # Try npm.cmd (standard install), then npm (nvm-windows shim), then npx.
-            $npmCmd = (Get-Command npm.cmd -ErrorAction SilentlyContinue).Source
-            if (-not $npmCmd) { $npmCmd = (Get-Command npm -ErrorAction SilentlyContinue).Source }
-
-            if ($nodeCmd -and $npmCmd) {
-                $tcDir = Join-Path $DG "tc"
-                $tcPkg = Join-Path $tcDir "node_modules\token-counter-mcp\package.json"
-                $tcMainCandidate = Join-Path $tcDir "node_modules\token-counter-mcp\dist\index.js"
-
-                # Check if install or update is needed.
-                $needsInstall = $false
-                if (-not (Test-Path $tcPkg) -or -not (Test-Path $tcMainCandidate)) {
-                    $needsInstall = $true
-                } else {
-                    # Check installed version against latest - update if outdated.
-                    try {
-                        $installedVer = (Get-Content $tcPkg -Raw | ConvertFrom-Json).version
-                        $latestInfo = & $npmCmd view token-counter-mcp version 2>$null
-                        if ($latestInfo -and $installedVer -and ($latestInfo.Trim() -ne $installedVer.Trim())) {
-                            Write-Host "[$Tool] Token counter update available: $installedVer -> $($latestInfo.Trim())"
-                            $needsInstall = $true
-                        }
-                    } catch {}  # version check is best-effort, never block
-                }
-
-                if ($needsInstall) {
-                    Write-Host "[$Tool] Installing token-counter-mcp..."
-                    New-Item -ItemType Directory -Force -Path $tcDir | Out-Null
-                    # Write without BOM (ASCII-safe JSON) so npm parses it correctly on PS5.
-                    [System.IO.File]::WriteAllText((Join-Path $tcDir "package.json"), '{"name":"tc-host","version":"1.0.0","private":true}')
-                    $installExit = Invoke-NativeQuiet $npmCmd @("install", "--prefix", $tcDir, "--no-package-lock", "--no-fund", "--loglevel", "error", "token-counter-mcp@latest")
-                    if ($installExit -ne 0) {
-                        Write-Host "[$Tool] Token counter install failed (exit $installExit). Set DG_DISABLE_TOKEN_COUNTER=1 to silence."
-                    }
-                }
-
-                # Resolve actual entry point from installed package.json.
-                $tcMain = $null
-                if (Test-Path $tcPkg) {
-                    try {
-                        $pkgData = Get-Content $tcPkg -Raw | ConvertFrom-Json
-                        $pkgDir  = Split-Path $tcPkg
-                        $bin = $pkgData.bin
-                        if ($bin -is [string] -and $bin) {
-                            $tcMain = Join-Path $pkgDir $bin
-                        } elseif ($bin -and $bin.'token-counter-mcp') {
-                            $tcMain = Join-Path $pkgDir $bin.'token-counter-mcp'
-                        } elseif ($pkgData.main) {
-                            $tcMain = Join-Path $pkgDir $pkgData.main
-                        }
-                    } catch {}
-                }
-                if ($tcMain -and (Test-Path $tcMain)) {
-                    [void](Invoke-NativeQuiet "claude" @("mcp", "add", "--scope", "user", "token-counter", "--", $nodeCmd, $tcMain))
-                    $tcPortFile = Join-Path $env:USERPROFILE ".claude\token-counter\dashboard-port.txt"
-                    $tcPort = if (Test-Path $tcPortFile) { (Get-Content $tcPortFile -Raw).Trim() } else { "8899" }
-                    Write-Host "[$Tool] Token counter -> http://127.0.0.1:$tcPort (global)"
-                } else {
-                    Write-Host "[$Tool] Token counter skipped (entry file not found). Set DG_DISABLE_TOKEN_COUNTER=1 to silence."
-                }
+            # Skip if token-counter is already registered (avoids disconnecting other terminals)
+            $claudeJsonPath = Join-Path $env:USERPROFILE ".claude.json"
+            if ((Test-Path $claudeJsonPath) -and (Select-String -Path $claudeJsonPath -Pattern '"token-counter"' -Quiet)) {
+                $tcPortFile = Join-Path $env:USERPROFILE ".claude\token-counter\dashboard-port.txt"
+                $tcPort = if (Test-Path $tcPortFile) { (Get-Content $tcPortFile -Raw).Trim() } else { "8899" }
+                Write-Host "[$Tool] Token counter already registered -> http://127.0.0.1:$tcPort (global)"
             } else {
-                Write-Host "[$Tool] Token counter skipped (node/npm not found). Set DG_DISABLE_TOKEN_COUNTER=1 to silence."
+                $nodeCmd = (Get-Command node -ErrorAction SilentlyContinue).Source
+                # Try npm.cmd (standard install), then npm (nvm-windows shim), then npx.
+                $npmCmd = (Get-Command npm.cmd -ErrorAction SilentlyContinue).Source
+                if (-not $npmCmd) { $npmCmd = (Get-Command npm -ErrorAction SilentlyContinue).Source }
+
+                if ($nodeCmd -and $npmCmd) {
+                    $tcDir = Join-Path $DG "tc"
+                    $tcPkg = Join-Path $tcDir "node_modules\token-counter-mcp\package.json"
+                    $tcMainCandidate = Join-Path $tcDir "node_modules\token-counter-mcp\dist\index.js"
+
+                    # Check if install or update is needed.
+                    $needsInstall = $false
+                    if (-not (Test-Path $tcPkg) -or -not (Test-Path $tcMainCandidate)) {
+                        $needsInstall = $true
+                    } else {
+                        # Check installed version against latest - update if outdated.
+                        try {
+                            $installedVer = (Get-Content $tcPkg -Raw | ConvertFrom-Json).version
+                            $latestInfo = & $npmCmd view token-counter-mcp version 2>$null
+                            if ($latestInfo -and $installedVer -and ($latestInfo.Trim() -ne $installedVer.Trim())) {
+                                Write-Host "[$Tool] Token counter update available: $installedVer -> $($latestInfo.Trim())"
+                                $needsInstall = $true
+                            }
+                        } catch {}  # version check is best-effort, never block
+                    }
+
+                    if ($needsInstall) {
+                        Write-Host "[$Tool] Installing token-counter-mcp..."
+                        New-Item -ItemType Directory -Force -Path $tcDir | Out-Null
+                        # Write without BOM (ASCII-safe JSON) so npm parses it correctly on PS5.
+                        [System.IO.File]::WriteAllText((Join-Path $tcDir "package.json"), '{"name":"tc-host","version":"1.0.0","private":true}')
+                        $installExit = Invoke-NativeQuiet $npmCmd @("install", "--prefix", $tcDir, "--no-package-lock", "--no-fund", "--loglevel", "error", "token-counter-mcp@latest")
+                        if ($installExit -ne 0) {
+                            Write-Host "[$Tool] Token counter install failed (exit $installExit). Set DG_DISABLE_TOKEN_COUNTER=1 to silence."
+                        }
+                    }
+
+                    # Resolve actual entry point from installed package.json.
+                    $tcMain = $null
+                    if (Test-Path $tcPkg) {
+                        try {
+                            $pkgData = Get-Content $tcPkg -Raw | ConvertFrom-Json
+                            $pkgDir  = Split-Path $tcPkg
+                            $bin = $pkgData.bin
+                            if ($bin -is [string] -and $bin) {
+                                $tcMain = Join-Path $pkgDir $bin
+                            } elseif ($bin -and $bin.'token-counter-mcp') {
+                                $tcMain = Join-Path $pkgDir $bin.'token-counter-mcp'
+                            } elseif ($pkgData.main) {
+                                $tcMain = Join-Path $pkgDir $pkgData.main
+                            }
+                        } catch {}
+                    }
+                    if ($tcMain -and (Test-Path $tcMain)) {
+                        [void](Invoke-NativeQuiet "claude" @("mcp", "add", "--scope", "user", "token-counter", "--", $nodeCmd, $tcMain))
+                        $tcPortFile = Join-Path $env:USERPROFILE ".claude\token-counter\dashboard-port.txt"
+                        $tcPort = if (Test-Path $tcPortFile) { (Get-Content $tcPortFile -Raw).Trim() } else { "8899" }
+                        Write-Host "[$Tool] Token counter -> http://127.0.0.1:$tcPort (global)"
+                    } else {
+                        Write-Host "[$Tool] Token counter skipped (entry file not found). Set DG_DISABLE_TOKEN_COUNTER=1 to silence."
+                    }
+                } else {
+                    Write-Host "[$Tool] Token counter skipped (node/npm not found). Set DG_DISABLE_TOKEN_COUNTER=1 to silence."
+                }
             }
         } catch {
             Write-Host "[$Tool] Token counter setup skipped: $($_.Exception.Message)"
