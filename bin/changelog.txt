@@ -1,3 +1,7 @@
+3.9.95
+- Added: Java, Kotlin, Scala, C#, Ruby, Rust, Swift language support in graph indexer (symbol extraction + import edges)
+- Fixed: Java interface methods, generic return types (Collection<? extends T>), and Javadoc false positives
+
 3.9.94
 - Fixed: token-counter MCP no longer disconnects when opening a second terminal (skip re-register if already present)
 
