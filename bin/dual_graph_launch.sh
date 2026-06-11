@@ -192,8 +192,8 @@ fi
 
 if [[ "$ASSISTANT" != "codex" && "$ASSISTANT" != "claude" && "$ASSISTANT" != "cursor" \
    && "$ASSISTANT" != "gemini" && "$ASSISTANT" != "opencode" && "$ASSISTANT" != "copilot" \
-   && "$ASSISTANT" != "antigravity" && "$ASSISTANT" != "leaderboard" ]]; then
-  echo "Usage: $0 <codex|claude|cursor|gemini|opencode|copilot|antigravity> [project_path] [prompt]" >&2
+   && "$ASSISTANT" != "antigravity" && "$ASSISTANT" != "openclaw" && "$ASSISTANT" != "leaderboard" ]]; then
+  echo "Usage: $0 <codex|claude|cursor|gemini|opencode|copilot|antigravity|openclaw> [project_path] [prompt]" >&2
   echo "       $0 audit [project_path]   — vibe code health report" >&2
   exit 2
 fi
@@ -220,7 +220,8 @@ RUNTIME_TOOLNAME_RAW=""
 _FILTERED=()
 for _fa in "$@"; do
   if [[ "$_fa" == --model=codex || "$_fa" == --model=local || "$_fa" == --model=ollama \
-     || "$_fa" == --model=gemini || "$_fa" == --model=opencode || "$_fa" == --model=antigravity ]]; then
+     || "$_fa" == --model=gemini || "$_fa" == --model=opencode || "$_fa" == --model=antigravity \
+     || "$_fa" == --model=openclaw ]]; then
     FAILOVER_MODEL="${_fa#--model=}"
   else
     _FILTERED+=("$_fa")
@@ -266,6 +267,7 @@ if [[ -n "$FAILOVER_MODEL" ]]; then
     gemini)          ASSISTANT="gemini" ;;
     opencode)        ASSISTANT="opencode" ;;
     antigravity)     ASSISTANT="antigravity" ;;
+    openclaw)        ASSISTANT="openclaw" ;;
     local|ollama)
       ASSISTANT="codex"
       export OPENAI_BASE_URL="http://localhost:11434/v1"
@@ -406,6 +408,10 @@ case "$ASSISTANT" in
   antigravity)
     echo "[$TOOL_LABEL]   1. Wait 5 minutes and run graperoot again"
     echo "[$TOOL_LABEL]   2. Install Antigravity: curl -fsSL https://antigravity.google/cli/install.sh | bash"
+    ;;
+  openclaw)
+    echo "[$TOOL_LABEL]   1. Wait 5 minutes and run graperoot again"
+    echo "[$TOOL_LABEL]   2. Install OpenClaw: npm install -g openclaw@latest"
     ;;
 esac
 echo "[$TOOL_LABEL]   3. Join Discord for help: https://discord.gg/rxgVVgCh"
@@ -616,6 +622,10 @@ elif [[ "$ASSISTANT" == "cursor" ]]; then
   DOC_NAME=".cursor/rules/graperoot.mdc"
   POLICY_MARKER="dgc-policy-v11"
 elif [[ "$ASSISTANT" == "opencode" ]]; then
+  DOC_FILE="$PROJECT/AGENTS.md"
+  DOC_NAME="AGENTS.md"
+  POLICY_MARKER="dgc-policy-v11"
+elif [[ "$ASSISTANT" == "openclaw" ]]; then
   DOC_FILE="$PROJECT/AGENTS.md"
   DOC_NAME="AGENTS.md"
   POLICY_MARKER="dgc-policy-v11"
@@ -2308,6 +2318,56 @@ with open(config_file, "w", encoding="utf-8") as f:
 PY
   echo "[$TOOL_LABEL] MCP config written -> ~/.gemini/antigravity-cli/mcp_config.json"
   echo "[$TOOL_LABEL] MCP URL: http://127.0.0.1:$MCP_PORT/mcp"
+
+elif [[ "$ASSISTANT" == "openclaw" ]]; then
+  CURRENT_STEP="Registering MCP (OpenClaw)"
+
+  # Auto-install openclaw CLI if missing
+  if ! command -v openclaw &>/dev/null; then
+    echo "[$TOOL_LABEL] openclaw not found — installing..."
+    if command -v npm &>/dev/null; then
+      npm install -g openclaw@latest >/dev/null 2>&1 || true
+    fi
+    export PATH="$PATH:$(npm config get prefix 2>/dev/null)/bin:$HOME/.npm-global/bin:$HOME/.local/bin"
+    if ! command -v openclaw &>/dev/null; then
+      echo "[$TOOL_LABEL] ERROR: could not auto-install openclaw."
+      echo "[$TOOL_LABEL]   npm install -g openclaw@latest"
+      _send_cli_error "Registering MCP" "openclaw CLI not found, auto-install failed"
+      exit 1
+    fi
+    echo "[$TOOL_LABEL] openclaw installed."
+  fi
+
+  # Register MCP server via openclaw CLI (preferred) or write config directly
+  _OC_URL="http://127.0.0.1:$MCP_PORT/mcp"
+  if openclaw mcp set "dual-graph" "{\"url\":\"$_OC_URL\",\"transport\":\"streamable-http\"}" 2>/dev/null; then
+    echo "[$TOOL_LABEL] MCP server registered via openclaw CLI."
+  else
+    # Fallback: write directly to ~/.openclaw/openclaw.json
+    mkdir -p "$HOME/.openclaw"
+    "$PYTHON" - "$HOME/.openclaw/openclaw.json" "$MCP_PORT" <<'PY'
+import json, sys, os
+config_file = sys.argv[1]
+port = sys.argv[2]
+existing = {}
+if os.path.exists(config_file):
+    try:
+        with open(config_file, "r", encoding="utf-8") as f:
+            existing = json.load(f)
+    except Exception:
+        pass
+mcp = existing.get("mcp", {})
+servers = mcp.get("servers", {})
+servers["dual-graph"] = {"url": f"http://127.0.0.1:{port}/mcp", "transport": "streamable-http"}
+mcp["servers"] = servers
+existing["mcp"] = mcp
+with open(config_file, "w", encoding="utf-8") as f:
+    json.dump(existing, f, indent=2)
+    f.write("\n")
+PY
+    echo "[$TOOL_LABEL] MCP config written -> ~/.openclaw/openclaw.json"
+  fi
+  echo "[$TOOL_LABEL] MCP URL: $_OC_URL"
 fi
 
 # ── First-run: show all available commands ────────────────────────────────────
@@ -2326,6 +2386,7 @@ if [[ ! -f "$_INSTALL_DATE_FILE" ]]; then
   echo "  graperoot [path] --opencode     OpenCode"
   echo "  graperoot [path] --copilot      GitHub Copilot (VS Code)"
   echo "  graperoot [path] --antigravity  Google Antigravity"
+  echo "  graperoot [path] --openclaw     OpenClaw"
   echo ""
   echo "  Shortcuts:"
   echo "    dgc [path]   →  graperoot [path] --claude"
@@ -2502,7 +2563,7 @@ CURRENT_STEP="Pre-flight checks"
 
 # 1. Verify the CLI tool is installed and in PATH (should already be fixed at registration step, but double-check)
 # For cursor/copilot, bin was resolved at registration; skip the PATH check.
-if [[ "$ASSISTANT" != "cursor" && "$ASSISTANT" != "copilot" && "$ASSISTANT" != "antigravity" ]] && ! command -v "$ASSISTANT" &>/dev/null; then
+if [[ "$ASSISTANT" != "cursor" && "$ASSISTANT" != "copilot" && "$ASSISTANT" != "antigravity" && "$ASSISTANT" != "openclaw" ]] && ! command -v "$ASSISTANT" &>/dev/null; then
   # Refresh PATH one more time
   export PATH="$PATH:$(npm config get prefix 2>/dev/null)/bin:$HOME/.npm-global/bin:$HOME/.local/bin"
   if ! command -v "$ASSISTANT" &>/dev/null; then
@@ -2534,7 +2595,7 @@ fi
 # 3. Quick smoke test — verify CLI responds (catches broken installs, missing deps)
 # cursor is validated via CURSOR_BIN at registration time; skip --version check for it.
 _SMOKE_BIN="${CURSOR_BIN:-${CODE_BIN:-$ASSISTANT}}"
-if [[ "$ASSISTANT" != "cursor" && "$ASSISTANT" != "copilot" && "$ASSISTANT" != "antigravity" ]] && ! "$_SMOKE_BIN" --version &>/dev/null 2>&1; then
+if [[ "$ASSISTANT" != "cursor" && "$ASSISTANT" != "copilot" && "$ASSISTANT" != "antigravity" && "$ASSISTANT" != "openclaw" ]] && ! "$_SMOKE_BIN" --version &>/dev/null 2>&1; then
   echo "[$TOOL_LABEL] WARNING: '$ASSISTANT --version' failed. The CLI may not work correctly."
   case "$ASSISTANT" in
     claude)   echo "[$TOOL_LABEL] Try reinstalling: npm install -g @anthropic-ai/claude-code" ;;
@@ -2555,7 +2616,7 @@ if ! kill -0 "$MCP_PID" 2>/dev/null; then
 fi
 
 # ── Launch CLI ───────────────────────────────────────────────────────────────
-if [[ "$ASSISTANT" != "antigravity" ]]; then
+if [[ "$ASSISTANT" != "antigravity" && "$ASSISTANT" != "openclaw" ]]; then
   echo ""
   echo "[$TOOL_LABEL] Starting $ASSISTANT..."
   echo ""
@@ -2610,6 +2671,15 @@ elif [[ "$ASSISTANT" == "antigravity" ]]; then
   else
     agy 2>"$RUN_DIR/assistant_stderr.log"
   fi
+elif [[ "$ASSISTANT" == "openclaw" ]]; then
+  # OpenClaw uses 'openclaw agent --local' for embedded agent runs
+  trap 'echo ""; echo "[$TOOL_LABEL] Shutting down MCP server (PID $MCP_PID)..."; kill "$MCP_PID" 2>/dev/null; rm -f "$RUN_DIR/mcp_server.pid" "$RUN_DIR/mcp_port"; exit 130' INT TERM HUP
+  echo "[$TOOL_LABEL] Starting OpenClaw agent..."
+  echo ""
+  _OC_MSG="${PROMPT:-Project: $PROJECT. The dual-graph MCP server is connected — call graph_continue to start, then graph_scan('$PROJECT') if needed.}"
+  _OC_MODEL="${OPENCLAW_DEFAULT_MODEL:-amazon-bedrock/global.anthropic.claude-opus-4-6-v1}"
+  _OC_SESSION="agent:main:graperoot-$(basename "$PROJECT")"
+  openclaw agent --local --agent main --session-key "$_OC_SESSION" --model "$_OC_MODEL" --thinking off --message "$_OC_MSG" 2>"$RUN_DIR/assistant_stderr.log"
 else
   # Build launch args: optional prompt + all passthrough flags
   _LAUNCH_ARGS=()

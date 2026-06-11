@@ -1,3 +1,8 @@
+3.9.96
+- Added: OpenClaw agent support (--openclaw flag) with dual-graph MCP integration
+- Fixed: openclaw launch flags (--agent main, --session-key, --model, --thinking off)
+- Fixed: project path injected into openclaw initial message for graph_scan
+
 3.9.95
 - Added: Java, Kotlin, Scala, C#, Ruby, Rust, Swift language support in graph indexer (symbol extraction + import edges)
 - Fixed: Java interface methods, generic return types (Collection<? extends T>), and Javadoc false positives

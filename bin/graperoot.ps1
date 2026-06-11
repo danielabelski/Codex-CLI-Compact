@@ -10,6 +10,7 @@
 #   graperoot [path] --opencode     OpenCode
 #   graperoot [path] --copilot      GitHub Copilot (VS Code)
 #   graperoot [path] --antigravity  Google Antigravity
+#   graperoot [path] --openclaw     OpenClaw
 
 param(
     [Parameter(Position = 0)] [string]$Arg0 = ".",
@@ -23,6 +24,7 @@ param(
     [switch]$opencode,
     [switch]$copilot,
     [switch]$antigravity,
+    [switch]$openclaw,
     [string]$toolname = "graperoot"
 )
 
@@ -44,6 +46,7 @@ if ($Arg0 -in @("--help","-h","?","/?")) {
     Write-Host "    --opencode     OpenCode"
     Write-Host "    --copilot      GitHub Copilot (VS Code)"
     Write-Host "    --antigravity  Google Antigravity"
+    Write-Host "    --openclaw     OpenClaw"
     Write-Host ""
     Write-Host "  Options:"
     Write-Host "    --resume <id>    Resume a previous claude / codex session"
@@ -56,6 +59,7 @@ if ($Arg0 -in @("--help","-h","?","/?")) {
     Write-Host "    graperoot C:\my\project --opencode"
     Write-Host "    graperoot C:\my\project --copilot"
     Write-Host "    graperoot C:\my\project --antigravity"
+    Write-Host "    graperoot C:\my\project --openclaw"
     Write-Host "    graperoot C:\my\project --claude --resume <session-id>"
     Write-Host "    dgc .                        # same as graperoot . --claude"
     Write-Host "    dg  .                        # same as graperoot . --codex"
@@ -79,7 +83,7 @@ $env:DG_TOOLNAME = $RuntimeToolName
 $Assistant   = "claude"   # default
 $ProjectPath = ""
 $Passthrough = @()
-$_validTools = @("claude","codex","cursor","gemini","opencode","copilot","antigravity")
+$_validTools = @("claude","codex","cursor","gemini","opencode","copilot","antigravity","openclaw")
 $_toolSet    = $false
 $_inputArgs  = @($Arg0, $Arg1, $Arg2)
 if ($args) { $_inputArgs += $args }
@@ -91,6 +95,7 @@ elseif ($cursor)      { $Assistant = "cursor";       $_toolSet = $true }
 elseif ($gemini)      { $Assistant = "gemini";       $_toolSet = $true }
 elseif ($copilot)     { $Assistant = "copilot";      $_toolSet = $true }
 elseif ($antigravity) { $Assistant = "antigravity";  $_toolSet = $true }
+elseif ($openclaw)    { $Assistant = "openclaw";     $_toolSet = $true }
 elseif ($codex)       { $Assistant = "codex";        $_toolSet = $true }
 elseif ($claude)      { $Assistant = "claude";       $_toolSet = $true }
 
@@ -104,6 +109,7 @@ while ($_argIndex -lt $_inputArgs.Count) {
     if ($arg -in @("--opencode","opencode")) { $Assistant = "opencode"; $_toolSet = $true; $_argIndex++; continue }
     if ($arg -in @("--copilot","copilot"))       { $Assistant = "copilot";      $_toolSet = $true; $_argIndex++; continue }
     if ($arg -in @("--antigravity","antigravity")) { $Assistant = "antigravity"; $_toolSet = $true; $_argIndex++; continue }
+    if ($arg -in @("--openclaw","openclaw"))       { $Assistant = "openclaw";    $_toolSet = $true; $_argIndex++; continue }
     if ($arg -match '^-{1,2}toolname=(.*)$') {
         $RuntimeToolName = Normalize-ToolName $Matches[1]
         $env:DG_TOOLNAME = $RuntimeToolName
@@ -729,6 +735,77 @@ if ($Assistant -eq "antigravity") {
     Write-Host "[$Tool] Starting Antigravity..."
     Write-Host ""
     agy
+}
+
+# -- OpenClaw: write ~/.openclaw/openclaw.json MCP entry and launch ------------
+if ($Assistant -eq "openclaw") {
+    # Auto-install openclaw if missing
+    if (-not (Get-Command openclaw -ErrorAction SilentlyContinue)) {
+        Write-Host "[$Tool] openclaw not found - installing (this may take a minute)..."
+        try { npm install -g openclaw@latest } catch {}
+        if (-not (Get-Command openclaw -ErrorAction SilentlyContinue)) {
+            Write-Host "[$Tool] ERROR: could not auto-install openclaw."
+            Write-Host "[$Tool]   npm install -g openclaw@latest"
+            Stop-Process -Id $mcpProc.Id -Force -ErrorAction SilentlyContinue
+            exit 1
+        }
+        Write-Host "[$Tool] openclaw installed."
+    }
+
+    # Register MCP server via openclaw CLI
+    Write-Host "[$Tool] Registering dual-graph MCP server with OpenClaw..."
+    $ocUrl = "http://127.0.0.1:$McpPort/mcp"
+    & openclaw mcp set "dual-graph" "{`"url`":`"$ocUrl`",`"transport`":`"streamable-http`"}" 2>$null
+    if ($LASTEXITCODE -ne 0) {
+        # Fallback: write directly to ~/.openclaw/openclaw.json
+        $OcDir = Join-Path $env:USERPROFILE ".openclaw"
+        New-Item -ItemType Directory -Force -Path $OcDir | Out-Null
+        $OcConf = Join-Path $OcDir "openclaw.json"
+        $ocExisting = @{}
+        if (Test-Path $OcConf) {
+            try {
+                $parsed = Get-Content $OcConf -Raw | ConvertFrom-Json
+                if ($parsed) { $ocExisting = $parsed }
+            } catch {}
+        }
+        $ocTmp = [System.IO.Path]::GetTempFileName()
+        [System.IO.File]::WriteAllText($ocTmp, ($ocExisting | ConvertTo-Json -Depth 5 -Compress))
+        & $Python -c @"
+import json, sys
+config_file = sys.argv[1]
+port = sys.argv[2]
+with open(config_file, 'r', encoding='utf-8') as f:
+    data = json.load(f)
+mcp = data.get('mcp', {})
+servers = mcp.get('servers', {})
+servers['dual-graph'] = {'url': f'http://127.0.0.1:{port}/mcp', 'transport': 'streamable-http'}
+mcp['servers'] = servers
+data['mcp'] = mcp
+with open(config_file, 'w', encoding='utf-8') as f:
+    json.dump(data, f, indent=2)
+    f.write('\n')
+"@ $OcConf $McpPort
+        Remove-Item $ocTmp -ErrorAction SilentlyContinue
+        Write-Host "[$Tool] MCP config written -> $OcConf"
+    } else {
+        Write-Host "[$Tool] MCP server registered via openclaw CLI."
+    }
+    Write-Host "[$Tool] MCP URL: $ocUrl"
+
+    # Write/append AGENTS.md (OpenClaw reads rules from AGENTS.md)
+    $AgentsFile = Join-Path $ProjectPath "AGENTS.md"
+    $OcPolicyMarker = "dgc-policy-v11"
+    if ((-not (Test-Path $AgentsFile)) -or (-not (Select-String -Path $AgentsFile -Pattern $OcPolicyMarker -Quiet))) {
+        Write-Host "[$Tool] Writing AGENTS.md policy ..."
+        & $Python -c 'import sys,os;f=sys.argv[1];m=sys.argv[2];existed=os.path.exists(f);content=open(f,"r",encoding="utf-8").read() if existed else "";sep="\n\n" if content and not content.endswith("\n\n") else ("\n" if content and not content.endswith("\n") else "");policy="<!-- "+m+" -->\n# Dual-Graph Context Policy\n\nThis project uses a local dual-graph MCP server for efficient context retrieval.\n\n## MANDATORY: Always follow this order\n\n1. **Call `graph_continue` first** - before any file exploration, grep, or code reading.\n2. **If `graph_continue` returns `needs_project=true`**: call `graph_scan` with the current project directory. Do NOT ask the user.\n3. **If `graph_continue` returns `skip=true`**: project has fewer than 5 files. Do NOT do broad exploration.\n4. **Read `recommended_files`** using `graph_read` - one call per file.\n5. **Check `confidence`** and obey the caps strictly:\n   - high -> Stop. Do NOT grep or explore further.\n   - medium -> At most 2 supplementary greps, then 2 additional files. Then stop.\n   - low -> At most 3 supplementary greps, then 3 additional files. Then stop.\n\n## Rules\n\n- Do NOT use grep or file exploration before calling `graph_continue`.\n- Do NOT do broad/recursive exploration at any confidence level.\n- After edits, call `graph_register_edit(files: [\"path/to/file\"])`.\n";open(f,"w",encoding="utf-8").write(content+sep+policy)' $AgentsFile $OcPolicyMarker
+        Write-Host "[$Tool] AGENTS.md updated."
+    }
+
+    Write-Host ""
+    Set-Location $ProjectPath
+    Write-Host "[$Tool] Starting openclaw agent..."
+    Write-Host ""
+    openclaw agent --local --message "I am ready to help. The dual-graph MCP server is connected — use graph_continue to start."
 }
 
 # Cleanup

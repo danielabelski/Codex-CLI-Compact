@@ -98,6 +98,7 @@ graperoot . --cursor             # Cursor
 graperoot . --gemini             # Gemini CLI
 graperoot . --opencode           # OpenCode
 graperoot . --copilot            # GitHub Copilot
+graperoot . --antigravity        # Google Antigravity
 graperoot . --codex              # Codex CLI
 graperoot /path/to/project --cursor           # specific project
 graperoot /path/to/project --gemini "add tests"  # with a prompt
@@ -198,7 +199,7 @@ get_session_stats()                  # running session cost
 
 The launcher checks for updates on every run and auto-updates if a new version is available. No manual intervention needed.
 
-Current version: **3.9.95**
+Current version: **3.9.96**
 
 ---
 

@@ -7,6 +7,7 @@
 #   graperoot [path] --cursor       # Cursor IDE
 #   graperoot [path] --gemini       # Google Gemini CLI
 #   graperoot [path] --antigravity  # Google Antigravity
+#   graperoot [path] --openclaw     # OpenClaw
 #
 # The tool flag can come before or after the path.
 # Flags can be written with or without --  (e.g. cursor or --cursor).
@@ -40,6 +41,7 @@ _show_help() {
     --opencode     OpenCode
     --copilot      GitHub Copilot (VS Code)
     --antigravity  Google Antigravity
+    --openclaw     OpenClaw
 
   Options:
     --resume <id>    Resume a previous claude / codex session
@@ -52,6 +54,7 @@ _show_help() {
     graperoot /my/project --opencode
     graperoot /my/project --copilot
     graperoot /my/project --antigravity
+    graperoot /my/project --openclaw
     graperoot /my/project --claude --resume <session-id>
     dgc .                          # same as graperoot . --claude
     dg  .                          # same as graperoot . --codex
@@ -68,7 +71,7 @@ ASSISTANT="claude"   # default
 PROJECT=""
 PASSTHROUGH=()
 
-_VALID_TOOLS="claude codex cursor gemini opencode copilot antigravity"
+_VALID_TOOLS="claude codex cursor gemini opencode copilot antigravity openclaw"
 _TOOL_SET=false
 
 ARGS=("$@")
@@ -83,6 +86,7 @@ while (( i < ${#ARGS[@]} )); do
     --opencode|opencode)       ASSISTANT="opencode";    _TOOL_SET=true ;;
     --copilot|copilot)         ASSISTANT="copilot";     _TOOL_SET=true ;;
     --antigravity|antigravity) ASSISTANT="antigravity"; _TOOL_SET=true ;;
+    --openclaw|openclaw)       ASSISTANT="openclaw";    _TOOL_SET=true ;;
     --toolname)
       PASSTHROUGH+=("$arg")
       if (( i + 1 < ${#ARGS[@]} )) && [[ "${ARGS[$((i + 1))]}" != --* ]]; then

@@ -23,7 +23,7 @@ $ClaudeExtraArgs = @()
 $RuntimeToolNameRaw = "claude"
 
 # -- Delegate to graperoot.ps1 for non-Claude tools ----------------------------
-$_otherTools = @("--opencode","--cursor","--gemini","--copilot","--codex")
+$_otherTools = @("--opencode","--cursor","--gemini","--copilot","--codex","--openclaw")
 foreach ($a in $args) {
     if ($a -in $_otherTools) {
         $DG = Join-Path $env:USERPROFILE ".dual-graph"
