@@ -870,7 +870,7 @@ with open(config_file, 'w', encoding='utf-8') as f:
     Set-Location $ProjectPath
     Write-Host "[$Tool] Starting openclaw agent..."
     Write-Host ""
-    openclaw agent --local --message "I am ready to help. The dual-graph MCP server is connected — use graph_continue to start."
+    openclaw agent --local --message "I am ready to help. The dual-graph MCP server is connected - use graph_continue to start."
 }
 
 # Cleanup
