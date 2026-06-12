@@ -1,3 +1,6 @@
+3.9.97
+- Fixed: replace broken Python one-liners in graperoot.ps1 with native PowerShell (Write-PolicyBlock)
+
 3.9.96
 - Added: OpenClaw agent support (--openclaw flag) with dual-graph MCP integration
 - Fixed: openclaw launch flags (--agent main, --session-key, --model, --thinking off)
