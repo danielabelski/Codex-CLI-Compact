@@ -8,6 +8,8 @@
 #   graperoot [path] --gemini       # Google Gemini CLI
 #   graperoot [path] --antigravity  # Google Antigravity
 #   graperoot [path] --openclaw     # OpenClaw
+#   graperoot [path] --kiro         # Kiro CLI
+#   graperoot [path] --command-code # Command Code
 #   graperoot                       # Interactive tool picker
 #   graperoot --version             # Print version
 #   graperoot --update              # Force self-update
@@ -57,6 +59,8 @@ _show_help() {
     --copilot      GitHub Copilot (VS Code)
     --antigravity  Google Antigravity
     --openclaw     OpenClaw
+    --kiro         Kiro CLI
+    --command-code Command Code
 
   Options:
     --resume <id>      Resume a previous claude / codex session
@@ -78,6 +82,8 @@ _show_help() {
     graperoot /my/project --copilot
     graperoot /my/project --antigravity
     graperoot /my/project --openclaw
+    graperoot /my/project --kiro
+    graperoot /my/project --command-code
     graperoot /my/project --claude --resume <session-id>
     dgc .                              # same as graperoot . --claude
     dg  .                              # same as graperoot . --codex
@@ -262,7 +268,7 @@ ASSISTANT="claude"   # default (overridden by picker or flag)
 PROJECT=""
 PASSTHROUGH=()
 
-_VALID_TOOLS="claude codex cursor gemini opencode copilot antigravity openclaw kilocode mimocode"
+_VALID_TOOLS="claude codex cursor gemini opencode copilot antigravity openclaw kilocode mimocode kiro command-code"
 _TOOL_SET=false
 
 ARGS=("$@")
@@ -280,6 +286,8 @@ while (( i < ${#ARGS[@]} )); do
     --openclaw|openclaw)       ASSISTANT="openclaw";    _TOOL_SET=true ;;
     --kilocode|kilocode)       ASSISTANT="kilocode";    _TOOL_SET=true ;;
     --mimocode|mimocode)       ASSISTANT="mimocode";    _TOOL_SET=true ;;
+    --kiro|kiro)               ASSISTANT="kiro";        _TOOL_SET=true ;;
+    --command-code|command-code|--commandcode|commandcode) ASSISTANT="command-code"; _TOOL_SET=true ;;
     --toolname)
       PASSTHROUGH+=("$arg")
       if (( i + 1 < ${#ARGS[@]} )) && [[ "${ARGS[$((i + 1))]}" != --* ]]; then
