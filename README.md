@@ -43,16 +43,28 @@ Token savings **compound** across a session. The graph remembers which files wer
 
 ## Results
 
-Benchmarked across 80+ prompts on a real-world full-stack app:
+Benchmarked on a 7,762-file Python codebase (Sentry), 30 prompts across real engineering tasks:
 
-| Metric | Without GrapeRoot | With GrapeRoot |
-|--------|:-----------------:|:--------------:|
-| Avg cost per prompt | $0.46 | **$0.27** |
-| Avg turns | 16.8 | **10.3** |
-| Avg response time | 186s | **134s** |
-| Quality (scored) | 82.7/100 | **87.1/100** |
+| Metric | Without GrapeRoot | With GrapeRoot | Savings |
+|--------|:-----------------:|:--------------:|:-------:|
+| Cost per prompt | $0.77 | **$0.44** | **43% less** |
+| Tokens read per turn | ~307K | **~76K** | **75% less** |
+| Avg turns per task | 16.8 | **10.3** | **39% fewer** |
+| Quality (scored) | 78.6 / 100 | **78.7–79.4 / 100** | equal or better |
+| Value (quality per dollar) | 1.0× | **1.75×** | **75% more** |
 
-> Cost wins on **16 out of 20** prompts. Quality equal or better at every complexity level.
+### Savings by task type
+
+The graph reads only the relevant excerpt of each file — not the whole thing. Savings compound across a session: a token avoided on turn 3 of a 20-turn session also skips cache re-billing on every subsequent turn.
+
+| Task type | Tokens read saved | Cost reduction |
+|-----------|:-----------------:|:--------------:|
+| Simple lookup / single-file | 50–60% | 5–10% |
+| Bug fixes & debugging | 65–75% | 15–25% |
+| Refactoring (multi-file) | 75–80% | 25–35% |
+| Large codebase navigation (7k+ files) | **80%+** | **up to 47%** |
+
+> On large codebases, token reads drop **68–75% per session**. Quality stays equal or improves — the AI gets the right files instead of guessing.
 
 Full benchmark methodology and results: [graperoot.dev/benchmarks](https://graperoot.dev/benchmarks)
 

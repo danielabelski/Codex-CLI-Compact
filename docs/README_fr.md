@@ -43,16 +43,28 @@ Les économies de tokens se **cumulent** tout au long d'une session. Le graphe s
 
 ## Résultats
 
-Évalué sur plus de 80 prompts sur une application full-stack réelle :
+Évalué sur une base de code Python de 7 762 fichiers (Sentry), 30 prompts couvrant de vraies tâches d'ingénierie :
 
-| Métrique | Sans GrapeRoot | Avec GrapeRoot |
-|----------|:--------------:|:--------------:|
-| Coût moyen par prompt | $0.46 | **$0.27** |
-| Nombre moyen de tours | 16.8 | **10.3** |
-| Temps de réponse moyen | 186s | **134s** |
-| Qualité (évaluée) | 82.7/100 | **87.1/100** |
+| Métrique | Sans GrapeRoot | Avec GrapeRoot | Économies |
+|----------|:--------------:|:--------------:|:---------:|
+| Coût par prompt | $0.77 | **$0.44** | **43% de moins** |
+| Tokens lus par tour | ~307K | **~76K** | **75% de moins** |
+| Tours moyens par tâche | 16.8 | **10.3** | **39% de moins** |
+| Qualité (évaluée) | 78.6 / 100 | **78.7–79.4 / 100** | égale ou meilleure |
+| Valeur (qualité par dollar) | 1.0× | **1.75×** | **75% de plus** |
 
-> Gains de coût sur **16 prompts sur 20**. Qualité égale ou supérieure à chaque niveau de complexité.
+### Économies par type de tâche
+
+Le graphe lit uniquement l'extrait pertinent de chaque fichier — pas l'intégralité. Les économies s'accumulent tout au long d'une session : un token évité au tour 3 d'une session de 20 tours évite également la refacturation du cache à chaque tour suivant.
+
+| Type de tâche | Tokens lus économisés | Réduction du coût |
+|---------------|:---------------------:|:-----------------:|
+| Recherche simple / fichier unique | 50–60% | 5–10% |
+| Corrections de bugs et débogage | 65–75% | 15–25% |
+| Refactorisation (multi-fichiers) | 75–80% | 25–35% |
+| Navigation dans une grande base de code (7k+ fichiers) | **80%+** | **jusqu'à 47%** |
+
+> Sur les grandes bases de code, les lectures de tokens baissent de **68–75% par session**. La qualité reste égale ou s'améliore — l'IA reçoit les bons fichiers plutôt que de deviner.
 
 Méthodologie complète et résultats des benchmarks : [graperoot.dev/benchmarks](https://graperoot.dev/benchmarks)
 

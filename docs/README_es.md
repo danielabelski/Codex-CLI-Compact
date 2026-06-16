@@ -43,16 +43,28 @@ El ahorro de tokens se **acumula** a lo largo de una sesión. El grafo recuerda 
 
 ## Resultados
 
-Evaluado en más de 80 prompts sobre una aplicación full-stack real:
+Evaluado en una base de código Python de 7,762 archivos (Sentry), 30 prompts de tareas de ingeniería reales:
 
-| Métrica | Sin GrapeRoot | Con GrapeRoot |
-|---------|:-------------:|:-------------:|
-| Costo promedio por prompt | $0.46 | **$0.27** |
-| Turnos promedio | 16.8 | **10.3** |
-| Tiempo de respuesta promedio | 186s | **134s** |
-| Calidad (puntuada) | 82.7/100 | **87.1/100** |
+| Métrica | Sin GrapeRoot | Con GrapeRoot | Ahorro |
+|---------|:-------------:|:-------------:|:------:|
+| Costo por prompt | $0.77 | **$0.44** | **43% menos** |
+| Tokens leídos por turno | ~307K | **~76K** | **75% menos** |
+| Turnos promedio por tarea | 16.8 | **10.3** | **39% menos** |
+| Calidad (puntuada) | 78.6 / 100 | **78.7–79.4 / 100** | igual o mejor |
+| Valor (calidad por dólar) | 1.0× | **1.75×** | **75% más** |
 
-> Ahorro de costos en **16 de 20** prompts. Calidad igual o superior en todos los niveles de complejidad.
+### Ahorro por tipo de tarea
+
+El grafo lee solo el extracto relevante de cada archivo, no el archivo completo. Los ahorros se acumulan a lo largo de una sesión: un token evitado en el turno 3 de una sesión de 20 turnos también evita la refacturación de caché en cada turno posterior.
+
+| Tipo de tarea | Tokens leídos ahorrados | Reducción de costo |
+|---------------|:-----------------------:|:------------------:|
+| Consulta simple / un solo archivo | 50–60% | 5–10% |
+| Corrección de errores y depuración | 65–75% | 15–25% |
+| Refactorización (múltiples archivos) | 75–80% | 25–35% |
+| Navegación en codebases grandes (7k+ archivos) | **80%+** | **hasta 47%** |
+
+> En codebases grandes, las lecturas de tokens caen **68–75% por sesión**. La calidad se mantiene igual o mejora — la IA recibe los archivos correctos en lugar de adivinar.
 
 Metodología completa y resultados del benchmark: [graperoot.dev/benchmarks](https://graperoot.dev/benchmarks)
 

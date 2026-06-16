@@ -43,16 +43,28 @@ Die Token-Einsparungen **summieren** sich über eine Sitzung hinweg. Der Graph m
 
 ## Ergebnisse
 
-Benchmarks über 80+ Prompts auf einer echten Full-Stack-App:
+Benchmarks auf einer Python-Codebasis mit 7.762 Dateien (Sentry), 30 Prompts aus echten Engineering-Aufgaben:
 
-| Metrik | Ohne GrapeRoot | Mit GrapeRoot |
-|--------|:--------------:|:-------------:|
-| Durchschn. Kosten pro Prompt | $0,46 | **$0,27** |
-| Durchschn. Gesprächsrunden | 16,8 | **10,3** |
-| Durchschn. Antwortzeit | 186s | **134s** |
-| Qualität (bewertet) | 82,7/100 | **87.1/100** |
+| Metrik | Ohne GrapeRoot | Mit GrapeRoot | Einsparung |
+|--------|:--------------:|:-------------:|:----------:|
+| Kosten pro Prompt | $0.77 | **$0.44** | **43% weniger** |
+| Gelesene Tokens pro Runde | ~307K | **~76K** | **75% weniger** |
+| Durchschn. Runden pro Aufgabe | 16.8 | **10.3** | **39% weniger** |
+| Qualität (bewertet) | 78.6 / 100 | **78.7–79.4 / 100** | gleich oder besser |
+| Wert (Qualität pro Dollar) | 1.0× | **1.75×** | **75% mehr** |
 
-> Kostenvorteil bei **16 von 20** Prompts. Qualität auf jedem Komplexitätsniveau gleich oder besser.
+### Einsparungen nach Aufgabentyp
+
+Der Graph liest nur den relevanten Ausschnitt jeder Datei — nicht die gesamte Datei. Die Einsparungen summieren sich über eine Sitzung hinweg: Ein in Runde 3 einer 20-Runden-Sitzung eingesparter Token vermeidet auch die Cache-Neuabrechnung in jeder nachfolgenden Runde.
+
+| Aufgabentyp | Eingesparte gelesene Tokens | Kostenreduzierung |
+|-------------|:---------------------------:|:-----------------:|
+| Einfache Suche / Einzeldatei | 50–60% | 5–10% |
+| Bugfixes & Debugging | 65–75% | 15–25% |
+| Refaktorierung (mehrere Dateien) | 75–80% | 25–35% |
+| Navigation in großen Codebasen (7k+ Dateien) | **80%+** | **bis zu 47%** |
+
+> Bei großen Codebasen sinken die Token-Lesevorgänge um **68–75% pro Sitzung**. Die Qualität bleibt gleich oder verbessert sich — die KI bekommt die richtigen Dateien, anstatt zu raten.
 
 Vollständige Benchmark-Methodik und Ergebnisse: [graperoot.dev/benchmarks](https://graperoot.dev/benchmarks)
 

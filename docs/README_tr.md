@@ -43,16 +43,28 @@ Token tasarrufu bir oturum boyunca **birikerek** artar. Grafik hangi dosyaların
 
 ## Sonuçlar
 
-Gerçek dünya tam yığın uygulaması üzerinde 80'den fazla istemle kıyaslandı:
+7.762 dosyalık bir Python kod tabanında (Sentry) gerçek mühendislik görevlerinden oluşan 30 istemle kıyaslandı:
 
-| Ölçüt | GrapeRoot Olmadan | GrapeRoot ile |
-|-------|:-----------------:|:-------------:|
-| İstem başına ortalama maliyet | $0.46 | **$0.27** |
-| Ortalama tur sayısı | 16.8 | **10.3** |
-| Ortalama yanıt süresi | 186s | **134s** |
-| Kalite (puanlanmış) | 82.7/100 | **87.1/100** |
+| Ölçüt | GrapeRoot Olmadan | GrapeRoot ile | Tasarruf |
+|-------|:-----------------:|:-------------:|:--------:|
+| İstem başına maliyet | $0.77 | **$0.44** | **%43 daha az** |
+| Tur başına okunan token | ~307K | **~76K** | **%75 daha az** |
+| Görev başına ortalama tur sayısı | 16.8 | **10.3** | **%39 daha az** |
+| Kalite (puanlanmış) | 78.6 / 100 | **78.7–79.4 / 100** | eşit ya da daha iyi |
+| Değer (dolar başına kalite) | 1.0× | **1.75×** | **%75 daha fazla** |
 
-> Maliyet **20 istemden 16'sında** kazanıyor. Her karmaşıklık düzeyinde kalite eşit ya da daha iyi.
+### Görev türüne göre tasarruf
+
+Graf, her dosyanın tamamını değil yalnızca ilgili bölümünü okur. Tasarruflar bir oturum boyunca birikerek artar: 20 turlu bir oturumda 3. turda önlenen bir token, sonraki her turda önbellek yeniden faturalandırmasını da engeller.
+
+| Görev türü | Okunan token tasarrufu | Maliyet azalması |
+|------------|:----------------------:|:----------------:|
+| Basit arama / tek dosya | 50–60% | 5–10% |
+| Hata düzeltme ve hata ayıklama | 65–75% | 15–25% |
+| Yeniden yapılandırma (çok dosyalı) | 75–80% | 25–35% |
+| Büyük kod tabanında gezinme (7k+ dosya) | **80%+** | **%47'ye kadar** |
+
+> Büyük kod tabanlarında, oturum başına token okuma sayısı **%68–75 azalır**. Kalite eşit kalır ya da iyileşir — yapay zeka tahmin etmek yerine doğru dosyaları alır.
 
 Tam kıyaslama metodolojisi ve sonuçları: [graperoot.dev/benchmarks](https://graperoot.dev/benchmarks)
 

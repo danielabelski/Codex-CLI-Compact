@@ -43,16 +43,28 @@ A economia de tokens **se acumula** ao longo de uma sessão. O grafo lembra quai
 
 ## Resultados
 
-Avaliado em mais de 80 prompts em um aplicativo full-stack real:
+Avaliado em uma base de código Python de 7.762 arquivos (Sentry), 30 prompts abrangendo tarefas reais de engenharia:
 
-| Métrica | Sem GrapeRoot | Com GrapeRoot |
-|---------|:-------------:|:-------------:|
-| Custo médio por prompt | $0,46 | **$0,27** |
-| Turnos médios | 16,8 | **10,3** |
-| Tempo médio de resposta | 186s | **134s** |
-| Qualidade (pontuada) | 82,7/100 | **87,1/100** |
+| Métrica | Sem GrapeRoot | Com GrapeRoot | Economia |
+|---------|:-------------:|:-------------:|:--------:|
+| Custo por prompt | $0.77 | **$0.44** | **43% menos** |
+| Tokens lidos por turno | ~307K | **~76K** | **75% menos** |
+| Turnos médios por tarefa | 16.8 | **10.3** | **39% menos** |
+| Qualidade (pontuada) | 78.6 / 100 | **78.7–79.4 / 100** | igual ou melhor |
+| Valor (qualidade por dólar) | 1.0× | **1.75×** | **75% mais** |
 
-> Vantagem de custo em **16 de 20** prompts. Qualidade igual ou melhor em todos os níveis de complexidade.
+### Economia por tipo de tarefa
+
+O grafo lê apenas o trecho relevante de cada arquivo — não o arquivo inteiro. As economias se acumulam ao longo de uma sessão: um token evitado no turno 3 de uma sessão de 20 turnos também evita a refaturação do cache em cada turno subsequente.
+
+| Tipo de tarefa | Tokens lidos economizados | Redução de custo |
+|----------------|:-------------------------:|:----------------:|
+| Consulta simples / arquivo único | 50–60% | 5–10% |
+| Correção de bugs e depuração | 65–75% | 15–25% |
+| Refatoração (múltiplos arquivos) | 75–80% | 25–35% |
+| Navegação em grandes codebases (7k+ arquivos) | **80%+** | **até 47%** |
+
+> Em grandes codebases, as leituras de tokens caem **68–75% por sessão**. A qualidade permanece igual ou melhora — a IA recebe os arquivos certos em vez de adivinhar.
 
 Metodologia completa e resultados do benchmark: [graperoot.dev/benchmarks](https://graperoot.dev/benchmarks)
 

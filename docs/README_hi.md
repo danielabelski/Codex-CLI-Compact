@@ -43,16 +43,28 @@ Token की बचत पूरे session में **compound** होती 
 
 ## परिणाम
 
-एक real-world full-stack app पर 80+ prompts में benchmark किया गया:
+7,762 फाइलों वाले Python codebase (Sentry) पर benchmark किया गया, 30 prompts असली engineering tasks पर:
 
-| मापदंड | GrapeRoot के बिना | GrapeRoot के साथ |
-|--------|:-----------------:|:--------------:|
-| प्रति prompt औसत लागत | $0.46 | **$0.27** |
-| औसत turns | 16.8 | **10.3** |
-| औसत response समय | 186s | **134s** |
-| गुणवत्ता (scored) | 82.7/100 | **87.1/100** |
+| मापदंड | GrapeRoot के बिना | GrapeRoot के साथ | बचत |
+|--------|:-----------------:|:--------------:|:---:|
+| प्रति prompt लागत | $0.77 | **$0.44** | **43% कम** |
+| प्रति turn पढ़े गए tokens | ~307K | **~76K** | **75% कम** |
+| प्रति task औसत turns | 16.8 | **10.3** | **39% कम** |
+| गुणवत्ता (scored) | 78.6 / 100 | **78.7–79.4 / 100** | बराबर या बेहतर |
+| Value (प्रति dollar गुणवत्ता) | 1.0× | **1.75×** | **75% अधिक** |
 
-> **20 में से 16 prompts** पर लागत में जीत। हर complexity स्तर पर गुणवत्ता बराबर या बेहतर।
+### Task के प्रकार के अनुसार बचत
+
+Graph हर file का सिर्फ संबंधित हिस्सा पढ़ता है — पूरी file नहीं। बचत पूरे session में compound होती रहती है: 20-turn session के turn 3 पर बचाया गया token, हर बाद के turn में cache re-billing से भी बचाता है।
+
+| Task का प्रकार | पढ़े गए tokens की बचत | लागत में कमी |
+|--------------|:--------------------:|:-----------:|
+| सरल query / एकल-file | 50–60% | 5–10% |
+| Bug fixes और debugging | 65–75% | 15–25% |
+| Refactoring (multi-file) | 75–80% | 25–35% |
+| बड़े codebase में navigation (7k+ files) | **80%+** | **47% तक** |
+
+> बड़े codebases पर, प्रति session token reads **68–75% कम** हो जाते हैं। गुणवत्ता बराबर रहती है या सुधरती है — AI को सही files मिलती हैं, अंदाजे से नहीं।
 
 पूरी benchmark methodology और results: [graperoot.dev/benchmarks](https://graperoot.dev/benchmarks)
 
