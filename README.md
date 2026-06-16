@@ -1,26 +1,39 @@
-# GrapeRoot — Compounding Context for AI Coding Assistants
+<div align="center">
 
-**[graperoot.dev](https://graperoot.dev)** · [Docs](https://graperoot.dev/docs) · [Benchmarks](https://graperoot.dev/benchmarks) · [Pro](https://graperoot.dev/graperoot-pro) · [Discord](https://discord.com/invite/YwKdQATY2d) · [Troubleshooting](./TROUBLESHOOTING.md)
+# GrapeRoot
 
-A context engine that makes Claude Code, Codex CLI, Gemini CLI, Cursor, OpenCode, and GitHub Copilot **30-45% cheaper** without sacrificing quality. It builds a semantic graph of your codebase and pre-loads the right files into every prompt — so your AI spends tokens reasoning, not exploring.
+### Compounding Context for AI Coding Assistants
 
-Works on **macOS, Linux, and Windows**. Supports any project size.
+**[graperoot.dev](https://graperoot.dev)** · [Docs](https://graperoot.dev/docs) · [Benchmarks](https://graperoot.dev/benchmarks) · [Pro](https://graperoot.dev/graperoot-pro) · [Discord](https://discord.com/invite/YwKdQATY2d)
 
-Supports **TypeScript, JavaScript, Python, Go, Swift, Rust, Java, Kotlin, C#, Ruby, and PHP**.
-
-**Join the community: [discord.com/invite/YwKdQATY2d](https://discord.com/invite/YwKdQATY2d)**
+[![PyPI](https://img.shields.io/pypi/v/graperoot?label=version&color=brightgreen)](https://pypi.org/project/graperoot/)
+[![License](https://img.shields.io/badge/license-Apache%202.0-blue)](./LICENSE)
+[![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows-lightgrey)](#install)
+[![Discord](https://img.shields.io/badge/Discord-community-5865F2?logo=discord&logoColor=white)](https://discord.com/invite/YwKdQATY2d)
+[![Stars](https://img.shields.io/github/stars/kunal12203/Codex-CLI-Compact?style=social)](https://github.com/kunal12203/Codex-CLI-Compact/stargazers)
 
 ---
 
-## How It Works
+🌐 **Read this in your language:**
+[English](./README.md) · [中文](./docs/README_zh-CN.md) · [Español](./docs/README_es.md) · [हिंदी](./docs/README_hi.md) · [Français](./docs/README_fr.md) · [Deutsch](./docs/README_de.md) · [日本語](./docs/README_ja.md) · [한국어](./docs/README_ko.md) · [Português](./docs/README_pt-BR.md) · [Русский](./docs/README_ru.md) · [العربية](./docs/README_ar.md) · [Türkçe](./docs/README_tr.md) · [Bahasa Indonesia](./docs/README_id.md)
+
+</div>
+
+---
+
+## What is GrapeRoot?
+
+GrapeRoot is an open-source **context engine** that sits between you and your AI coding assistant. It builds a semantic graph of your codebase — files, symbols, imports, call chains — and pre-loads exactly the right code into every prompt before your AI sees it.
+
+The result: your AI spends tokens **reasoning**, not exploring.
 
 ```
 You run: dgc /path/to/project
-         ↓
+              ↓
 1. Project scanned → semantic graph built (files, symbols, imports)
 2. You ask a question
 3. Graph identifies the relevant files → packs them into context
-4. Claude gets your question + the right code already loaded
+4. AI gets your question + the right code already loaded
 5. Fewer turns, fewer tokens, better answers
 ```
 
@@ -30,22 +43,43 @@ Token savings **compound** across a session. The graph remembers which files wer
 
 ## Results
 
-Benchmarked across 80+ prompts (5 complexity levels) on a real-world full-stack app. Full results at [graperoot.dev/benchmarks](https://graperoot.dev/benchmarks).
+Benchmarked across 80+ prompts on a real-world full-stack app:
 
-| Metric | Without Dual-Graph | With Dual-Graph |
-|--------|-------------------|-----------------|
+| Metric | Without GrapeRoot | With GrapeRoot |
+|--------|:-----------------:|:--------------:|
 | Avg cost per prompt | $0.46 | **$0.27** |
 | Avg turns | 16.8 | **10.3** |
 | Avg response time | 186s | **134s** |
-| Quality (regex scorer) | 82.7/100 | **87.1/100** |
+| Quality (scored) | 82.7/100 | **87.1/100** |
 
-Cost wins on **16 out of 20** prompts. Quality equal or better on all complexity levels.
+> Cost wins on **16 out of 20** prompts. Quality equal or better at every complexity level.
+
+Full benchmark methodology and results: [graperoot.dev/benchmarks](https://graperoot.dev/benchmarks)
+
+---
+
+## Supported AI Tools
+
+| Tool | Command | Status |
+|------|---------|--------|
+| Claude Code | `dgc` | ✅ Full support |
+| OpenAI Codex CLI | `dg` | ✅ Full support |
+| Cursor | `graperoot . --cursor` | ✅ Full support |
+| Gemini CLI | `graperoot . --gemini` | ✅ Full support |
+| OpenCode | `graperoot . --opencode` / `dgo` | ✅ Full support |
+| GitHub Copilot | `graperoot . --copilot` | ✅ Full support |
+| OpenClaw | `graperoot . --openclaw` | ✅ Full support |
+| Antigravity | `graperoot . --antigravity` | ✅ Full support |
+
+---
+
+## Supported Languages
+
+TypeScript · JavaScript · Python · Go · Swift · Rust · Java · Kotlin · Scala · C# · Ruby · PHP
 
 ---
 
 ## Install
-
-Full setup guide at [graperoot.dev/setup](https://graperoot.dev/setup).
 
 **macOS / Linux:**
 ```bash
@@ -64,96 +98,89 @@ scoop bucket add dual-graph https://github.com/kunal12203/scoop-dual-graph
 scoop install dual-graph
 ```
 
-**Prerequisites:** Python 3.10+, Node.js 18+, Claude Code or Codex CLI. The installer detects missing tools and offers to install them via winget (Windows) or homebrew (macOS).
+> **Prerequisites:** Python 3.10+, Node.js 18+, and one of the supported AI tools. The installer detects missing tools and offers to install them automatically.
 
 ---
 
 ## Usage
 
-> **⚠️ Important:** Always use `dgc` (not `claude` directly) to ensure the MCP server is running. Running `claude` alone will result in "MCP Server Connection Failed" errors.
+> **Important:** Always use `dgc` (not `claude` directly) to ensure the MCP server is running.
 
-### Claude Code (`dgc`)
-
-```bash
-dgc                              # scan current directory, launch Claude
-dgc /path/to/project             # scan a specific project
-dgc /path/to/project "fix the login bug"   # start with a prompt
-```
-
-### Codex CLI (`dg`)
+### Claude Code
 
 ```bash
-dg                               # scan current directory, launch Codex
-dg /path/to/project              # scan a specific project
-dg /path/to/project "add tests"  # start with a prompt
+dgc                                      # scan current directory, launch Claude
+dgc /path/to/project                     # scan a specific project
+dgc /path/to/project "fix the login bug" # start with a prompt
 ```
 
-### Other AI Assistants (`graperoot`)
-
-You can also use the `graperoot` command directly with any supported assistant:
+### OpenAI Codex CLI
 
 ```bash
-graperoot .                      # current directory, default (Claude)
-graperoot . --cursor             # Cursor
-graperoot . --gemini             # Gemini CLI
-graperoot . --opencode           # OpenCode
-graperoot . --copilot            # GitHub Copilot
-graperoot . --antigravity        # Google Antigravity
-graperoot . --codex              # Codex CLI
-graperoot /path/to/project --cursor           # specific project
-graperoot /path/to/project --gemini "add tests"  # with a prompt
+dg                              # scan current directory
+dg /path/to/project             # scan a specific project
+dg /path/to/project "add tests" # start with a prompt
 ```
 
-Or via the `dgc` / `dg` aliases with an assistant flag:
+### Interactive Picker (new in v3.9.99)
 
 ```bash
-dgc --gemini /path/to/project    # Gemini CLI
-dgc --cursor /path/to/project    # Cursor
-dgc --opencode /path/to/project  # OpenCode
-dgc --copilot /path/to/project   # GitHub Copilot
+graperoot          # shows directory confirm + arrow-key tool picker
+graperoot .        # same, picks from current directory
+graperoot --version   # print current version
+graperoot --update    # force self-update
 ```
 
-Typo detection is built in — `--claud` or `--gemi` will suggest the correct flag instead of silently failing.
+### All Tools via `graperoot`
+
+```bash
+graperoot . --cursor          # Cursor
+graperoot . --gemini          # Gemini CLI
+graperoot . --opencode        # OpenCode
+graperoot . --copilot         # GitHub Copilot
+graperoot . --openclaw        # OpenClaw
+graperoot /path --gemini "add tests"   # specific project + prompt
+```
 
 ### Windows
 
 ```powershell
-dgc .                            # from inside the project directory
-dgc "D:\projects\my-app"         # any drive, any path
-dg "C:\work\backend"             # Codex CLI
-dgc --gemini "D:\projects\app"   # Gemini CLI on Windows
+dgc .                          # from inside the project directory
+dgc "D:\projects\my-app"       # any drive, any path
+dg "C:\work\backend"           # Codex CLI
+dgc --gemini "D:\projects\app" # Gemini CLI on Windows
 ```
 
 ---
 
-## What It Does Under the Hood
+## How It Works
 
-1. **Scans your project** — extracts files, functions, classes, import relationships into a local graph. Supports TS/JS, Python, Go, Swift, Rust, Java, Kotlin, C#, Ruby, and PHP.
-2. **Pre-loads context** — when you ask a question, the graph ranks relevant files and packs them into the prompt before Claude sees it. No extra tool calls needed.
-3. **Remembers across turns** — files you've read or edited are prioritized in future turns. Context compounds.
-4. **MCP tools available** — Claude can still explore the codebase via graph-aware tools (`graph_read`, `graph_retrieve`, `graph_neighbors`, etc.) when it needs to go deeper.
+1. **Graph scan** — on first run, GrapeRoot extracts files, functions, classes, and import relationships into a local graph stored in `.dual-graph/`.
+2. **Context retrieval** — each time you ask a question, the graph ranks the most relevant files and packs them into the prompt before your AI sees it.
+3. **Session memory** — files you've read, edited, or queried are weighted higher in future turns. Context compounds.
+4. **MCP tools** — your AI can still drill deeper via graph-aware tools (`graph_read`, `graph_retrieve`, `graph_neighbors`) when it needs to explore.
 
-All processing is local. No code leaves your machine.
+All processing is **local**. No code leaves your machine.
 
 ---
 
 ## Data & Files
 
-All data lives in `<project>/.dual-graph/` (gitignored automatically).
+All data lives in `<project>/.dual-graph/` (auto-added to `.gitignore`):
 
 | File | Description |
-|---|---|
-| `info_graph.json` | Semantic graph of the project: files, symbols, edges |
-| `chat_action_graph.json` | Session memory: reads, edits, queries, decisions |
-| `context-store.json` | Persistent store for decisions/tasks/facts across sessions |
-| `mcp_server.log` | MCP server logs |
+|------|-------------|
+| `info_graph.json` | Semantic graph: files, symbols, edges |
+| `chat_action_graph.json` | Session memory: reads, edits, queries |
+| `context-store.json` | Persistent decisions/tasks/facts across sessions |
 
-Global files in `~/.dual-graph/`:
+Global install at `~/.dual-graph/`:
+
 | File | Description |
-|---|---|
+|------|-------------|
 | `dgc.ps1` / `dg.ps1` | Launcher scripts (auto-updated) |
-| `venv/` | Python virtual environment for dependencies |
-| `version.txt` | Current installed version |
+| `venv/` | Python virtual environment |
+| `version.txt` | Installed version |
 
 ---
 
@@ -162,165 +189,61 @@ Global files in `~/.dual-graph/`:
 All optional, via environment variables:
 
 | Variable | Default | Description |
-|---|---|---|
+|----------|---------|-------------|
 | `DG_HARD_MAX_READ_CHARS` | `4000` | Max characters per file read |
 | `DG_TURN_READ_BUDGET_CHARS` | `18000` | Total read budget per turn |
 | `DG_FALLBACK_MAX_CALLS_PER_TURN` | `1` | Max fallback grep calls per turn |
 | `DG_RETRIEVE_CACHE_TTL_SEC` | `900` | Retrieval cache TTL (15 min) |
-| `DG_MCP_PORT` | auto (8080-8099) | Force a specific MCP server port |
-
----
-
-## Context Store
-
-Decisions, tasks, and facts from your sessions are persisted in `.dual-graph/context-store.json` and re-injected at the start of the next session. This gives Claude continuity across conversations.
-
-You can also create a `CONTEXT.md` in your project root for free-form session notes.
-
----
-
-## Token Tracking
-
-A token-counter dashboard is registered automatically with Claude Code:
-
-```
-http://localhost:8899
-```
-
-Usage from inside a Claude session:
-```
-count_tokens({text: "<content>"})   # estimate tokens before reading
-get_session_stats()                  # running session cost
-```
+| `DG_MCP_PORT` | auto (8080–8099) | Force a specific MCP server port |
 
 ---
 
 ## Self-Update
 
-The launcher checks for updates on every run and auto-updates if a new version is available. No manual intervention needed.
+The launcher checks for updates on every run and auto-updates silently. To force an update:
+```bash
+graperoot --update
+```
 
 Current version: **3.10.0**
 
 ---
 
+## GrapeRoot Pro
+
+[GrapeRoot Pro](https://graperoot.dev/graperoot-pro) adds advanced features for power users:
+
+- **Exhaustive task mode** — deep multi-file analysis for complex refactors
+- **Dead export detection** — find unused exports across the codebase
+- **Dependency cycle finder** — detect circular import chains
+- **Cross-codebase search** — semantic search across multiple repos
+- **Undo shield** — pre-tool-use hooks that protect destructive operations
+
+---
+
 ## Troubleshooting
 
-### "MCP Server Connection Failed" or "HTTP 404: Not Found"
+### "MCP Server Connection Failed"
 
-**Cause:** The dual-graph MCP server isn't running. This happens when running `claude` directly instead of through `dgc`.
-
-**Solution:** Always use `dgc` instead of `claude`:
+Always use `dgc` instead of `claude` directly. `dgc` starts the MCP server automatically.
 
 ```bash
-# ❌ Don't run:
-claude
-
-# ✅ Run this:
-dgc
-dgc /path/to/project
+# Fix:
+claude mcp remove dual-graph
+dgc   # re-registers everything
 ```
 
-The `dgc` launcher automatically starts the MCP server and registers it with Claude Code.
+### Full troubleshooting guide
 
-**If the error persists:**
-
-1. **Clean up stale configs:**
-   ```bash
-   claude mcp remove dual-graph
-   claude mcp remove token-counter --scope user
-   ```
-
-2. **Run dgc again** (it will re-register automatically):
-   ```bash
-   dgc
-   ```
-
-3. **Check if the server started:**
-   ```bash
-   # Verify MCP server is running:
-   lsof -i :8080-8099 | grep python
-   
-   # Check logs:
-   cat .dual-graph/run/claude/mcp_server.log
-   ```
-
-4. **Fresh install** (if nothing else works):
-   ```bash
-   rm -rf ~/.dual-graph
-   claude mcp remove dual-graph 2>/dev/null
-   curl -sSL https://raw.githubusercontent.com/kunal12203/Codex-CLI-Compact/main/install.sh | bash
-   source ~/.zshrc  # or ~/.bashrc
-   ```
-
-### MCP Server Won't Start
-
-**Check the logs:**
-```bash
-cat .dual-graph/run/claude/mcp_server.log
-```
-
-**Common issues:**
-- **Port already in use:** Set a custom port with `DG_MCP_PORT=8090 dgc`
-- **Python dependencies missing:** Re-run installer or `pip install graperoot mcp uvicorn --upgrade`
-- **Permission errors:** Check file permissions in `.dual-graph/`
-
-### Session-Specific Issues
-
-**Resume not working?** The MCP server is session-based — it stops when you exit. To resume with dual-graph:
-```bash
-dgc --resume <session-id>
-```
-
-**Context not persisting?** Check if `.dual-graph/context-store.json` exists and is writable.
-
----
-
-## Privacy & Security
-
-- **All project data stays local.** Graphs, session data, and code never leave your machine.
-- The only outbound calls are:
-  - **Version check** — fetches a version string (no project data).
-  - **Heartbeat** — sends a random install ID and `platform` only. No hardware fingerprinting, no file names, no code.
-  - **One-time feedback** — optional rating after first day of use.
-- `.dual-graph/` is automatically added to `.gitignore`.
-
----
-
-## Uninstall
-
-**macOS / Linux:**
-```bash
-rm -rf ~/.dual-graph
-sed -i.bak '/\.dual-graph/d' ~/.zshrc ~/.bashrc 2>/dev/null
-rm -rf .dual-graph .claude/settings.local.json
-claude mcp remove token-counter --scope user 2>/dev/null
-claude mcp remove dual-graph 2>/dev/null
-rm -rf ~/.claude/token-counter
-rm -f ~/.claude/token-counter-stop.sh
-```
-
-**Windows (PowerShell):**
-```powershell
-Remove-Item "$env:USERPROFILE\.dual-graph" -Recurse -Force -ErrorAction SilentlyContinue
-$p = [Environment]::GetEnvironmentVariable("PATH","User") -split ";" | Where-Object { $_ -notlike "*\.dual-graph*" }
-[Environment]::SetEnvironmentVariable("PATH", ($p -join ";"), "User")
-Remove-Item ".dual-graph" -Recurse -Force -ErrorAction SilentlyContinue
-Remove-Item ".claude\settings.local.json" -Force -ErrorAction SilentlyContinue
-claude mcp remove token-counter --scope user 2>$null
-claude mcp remove dual-graph 2>$null
-Remove-Item "$env:USERPROFILE\.claude\token-counter" -Recurse -Force -ErrorAction SilentlyContinue
-Remove-Item "$env:USERPROFILE\.claude\token-counter-stop.ps1" -Force -ErrorAction SilentlyContinue
-```
-
-> The PATH/project commands remove the global install. Run the project-local commands inside each project you used dual-graph with.
+See [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) or [graperoot.dev/docs](https://graperoot.dev/docs).
 
 ---
 
 ## Contributing
 
-The launcher scripts (`bin/`) are open source under Apache 2.0. PRs are welcome — bug fixes, new AI assistant support, install improvements, docs.
+The launcher scripts (`bin/`) are open source under Apache 2.0. PRs welcome — bug fixes, new AI assistant support, install improvements, docs.
 
-**Note:** The graph engine ([`graperoot`](https://pypi.org/project/graperoot/)) is a separate proprietary component distributed via PyPI. The launcher scripts and tooling in this repo are fully open source; the core graph intelligence is not. See [graperoot.dev/graperoot-pro](https://graperoot.dev/graperoot-pro) for Pro features.
+**Note:** The graph engine (`graperoot` pip package) is proprietary. The launchers and tooling in this repo are fully open source.
 
 ---
 
@@ -328,20 +251,7 @@ The launcher scripts (`bin/`) are open source under Apache 2.0. PRs are welcome 
 
 Have a question, found a bug, or want to share feedback?
 
-**Join the Discord: [discord.com/invite/YwKdQATY2d](https://discord.com/invite/YwKdQATY2d)**
-
-- Get help with setup
-- Report bugs
-- Share workflows
-- Follow releases
-
----
-
-## Acknowledgements
-
-A huge thank you to everyone who used early versions of Dual-Graph and shared feedback through the telemetry program — your usage data helped us squash bugs and stabilize the tool into what it is today. We've now removed all telemetry in favor of full transparency.
-
-Want to keep helping shape the project? **[Join the Discord](https://discord.com/invite/YwKdQATY2d)** or visit [graperoot.dev](https://graperoot.dev).
+**[Join the Discord →](https://discord.com/invite/YwKdQATY2d)**
 
 ---
 
@@ -359,6 +269,14 @@ Want to keep helping shape the project? **[Join the Discord](https://discord.com
 
 ## License
 
-The launcher scripts and tooling in this repository are licensed under the [Apache License 2.0](./LICENSE).
+Launcher scripts and tooling in this repository: [Apache License 2.0](./LICENSE)
 
-The `graperoot` graph engine (installed as a PyPI dependency) is proprietary and not covered by this license.
+The `graperoot` graph engine (PyPI): proprietary. See [graperoot.dev/graperoot-pro](https://graperoot.dev/graperoot-pro).
+
+---
+
+<div align="center">
+
+Made with ❤️ · [graperoot.dev](https://graperoot.dev) · [Discord](https://discord.com/invite/YwKdQATY2d)
+
+</div>
