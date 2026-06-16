@@ -68,6 +68,66 @@ This project uses a local dual-graph MCP server for efficient context retrieval.
     }
 }
 
+# -- Version -------------------------------------------------------------------
+if ($Arg0 -in @("--version","-v")) {
+    $DG = Join-Path $env:USERPROFILE ".dual-graph"
+    $verFile = Join-Path $DG "version.txt"
+    if (-not (Test-Path $verFile)) {
+        $verFile = Join-Path (Split-Path -Parent $MyInvocation.MyCommand.Definition) "version.txt"
+    }
+    $ver = if (Test-Path $verFile) { (Get-Content $verFile -Raw).Trim() } else { "unknown" }
+    Write-Host "graperoot $ver"
+    exit 0
+}
+
+# -- Update --------------------------------------------------------------------
+if ($Arg0 -in @("--update")) {
+    $DG = Join-Path $env:USERPROFILE ".dual-graph"
+    $_BaseUrl = "https://raw.githubusercontent.com/kunal12203/Codex-CLI-Compact/main"
+    $_R2 = "https://pub-18426978d5a14bf4a60ddedd7d5b6dab.r2.dev"
+    $_VerFile = Join-Path $DG "version.txt"
+    $_LocalVer = if (Test-Path $_VerFile) { (Get-Content $_VerFile -Raw).Trim() } else { "0" }
+    $_RemoteVer = ""
+    try { $_RemoteVer = (Invoke-WebRequest "$_R2/version.txt" -UseBasicParsing -TimeoutSec 5).Content.Trim() } catch {
+        try { $_RemoteVer = (Invoke-WebRequest "$_BaseUrl/bin/version.txt" -UseBasicParsing -TimeoutSec 5).Content.Trim() } catch {}
+    }
+    if (-not $_RemoteVer) {
+        Write-Host "[graperoot] ERROR: could not reach update server."
+        exit 1
+    }
+    Write-Host "[graperoot] Local version : $_LocalVer"
+    Write-Host "[graperoot] Remote version: $_RemoteVer"
+    Write-Host "[graperoot] Downloading latest launcher files..."
+    function _dl_update([string]$R2Url, [string]$GhUrl, [string]$OutFile) {
+        $t = $OutFile + ".tmp"
+        foreach ($url in @($R2Url, $GhUrl)) {
+            if (-not $url) { continue }
+            try {
+                Invoke-WebRequest $url -OutFile $t -UseBasicParsing -TimeoutSec 15
+                if ((Test-Path $t) -and (Get-Item $t).Length -gt 0) {
+                    Move-Item $t $OutFile -Force; return
+                }
+            } catch {}
+            Remove-Item $t -Force -ErrorAction SilentlyContinue
+        }
+    }
+    _dl_update "$_R2/graperoot.ps1"        "$_BaseUrl/bin/graperoot.ps1"        (Join-Path $DG "graperoot.ps1")
+    _dl_update "$_R2/graperoot.cmd"        "$_BaseUrl/bin/graperoot.cmd"        (Join-Path $DG "graperoot.cmd")
+    _dl_update "$_R2/dgc.ps1"              "$_BaseUrl/bin/dgc.ps1"              (Join-Path $DG "dgc.ps1")
+    _dl_update "$_R2/dg.ps1"               "$_BaseUrl/bin/dg.ps1"               (Join-Path $DG "dg.ps1")
+    _dl_update "$_R2/dgc.cmd"              "$_BaseUrl/bin/dgc.cmd"              (Join-Path $DG "dgc.cmd")
+    _dl_update "$_R2/dg.cmd"               "$_BaseUrl/bin/dg.cmd"               (Join-Path $DG "dg.cmd")
+    _dl_update "$_R2/dual_graph_launch.sh" "$_BaseUrl/bin/dual_graph_launch.sh" (Join-Path $DG "dual_graph_launch.sh")
+    $venvPip = Join-Path $DG "venv\Scripts\pip.exe"
+    if (Test-Path $venvPip) {
+        Write-Host "[graperoot] Upgrading graperoot Python package..."
+        & $venvPip install graperoot --upgrade --quiet 2>$null
+    }
+    try { $_RemoteVer | Set-Content -Path $_VerFile -Encoding UTF8 } catch {}
+    Write-Host "[graperoot] Updated to $_RemoteVer."
+    exit 0
+}
+
 # -- Help ----------------------------------------------------------------------
 if ($Arg0 -in @("--help","-h","?","/?")) {
     Write-Host ""
@@ -75,6 +135,9 @@ if ($Arg0 -in @("--help","-h","?","/?")) {
     Write-Host ""
     Write-Host "  Usage:"
     Write-Host "    graperoot [path] <tool> [options]"
+    Write-Host "    graperoot [path]                   Interactive tool picker"
+    Write-Host "    graperoot --update                 Force self-update"
+    Write-Host "    graperoot --version                Print version"
     Write-Host ""
     Write-Host "  Tools:"
     Write-Host "    --claude       Claude Code   (shorthand: dgc [path])"
@@ -88,10 +151,14 @@ if ($Arg0 -in @("--help","-h","?","/?")) {
     Write-Host ""
     Write-Host "  Options:"
     Write-Host "    --resume <id>    Resume a previous claude / codex session"
+    Write-Host "    --update         Force update to latest version"
+    Write-Host "    --version, -v    Show version"
     Write-Host "    --help, -h, ?    Show this help"
     Write-Host ""
     Write-Host "  Examples:"
-    Write-Host "    graperoot . --claude"
+    Write-Host "    graperoot                        # interactive picker"
+    Write-Host "    graperoot .                      # interactive picker in current dir"
+    Write-Host "    graperoot . --claude             # launch Claude Code directly"
     Write-Host "    graperoot C:\my\project --cursor"
     Write-Host "    graperoot C:\my\project --gemini"
     Write-Host "    graperoot C:\my\project --opencode"
@@ -192,6 +259,83 @@ if (-not $_toolSet) {
 
 if (-not $ProjectPath) { $ProjectPath = (Get-Location).Path }
 $ProjectPath = (Resolve-Path $ProjectPath).Path
+
+# -- Interactive picker when no tool flag given and host is interactive ---------
+# Skip picker in ISE (no ReadKey), non-interactive hosts, or piped stdin
+$_canPickInteractive = $false
+try {
+    if (-not $_toolSet -and [Environment]::UserInteractive -and $Host.UI.RawUI -and $Host.Name -ne "Windows PowerShell ISE Host") {
+        # Verify ReadKey is available (throws on some remote/redirected hosts)
+        [void][Console]::KeyAvailable
+        $_canPickInteractive = $true
+    }
+} catch {}
+
+if ($_canPickInteractive) {
+    Write-Host ""
+    Write-Host "  graperoot - Dual-Graph AI tool launcher"
+    Write-Host ""
+    Write-Host "  Working directory: $ProjectPath" -ForegroundColor White
+    $confirm = Read-Host "  Continue? [Y/n]"
+    if ($confirm -match '^[Nn]') {
+        Write-Host "  Cancelled."
+        exit 0
+    }
+    Write-Host ""
+
+    $_toolKeys   = @("claude", "codex", "cursor", "gemini", "opencode", "copilot", "antigravity", "openclaw")
+    $_toolLabels = @("Claude Code", "OpenAI Codex", "Cursor", "Gemini CLI", "OpenCode", "GitHub Copilot", "Antigravity", "OpenClaw")
+    $_numTools   = $_toolKeys.Count
+    $_selected   = 0
+
+    Write-Host "  Select tool (arrow keys to navigate, Enter to select):"
+    Write-Host ""
+
+    # Draw initial menu
+    for ($_i = 0; $_i -lt $_numTools; $_i++) {
+        if ($_i -eq $_selected) {
+            Write-Host "  > $($_toolLabels[$_i])" -ForegroundColor Cyan
+        } else {
+            Write-Host "    $($_toolLabels[$_i])"
+        }
+    }
+
+    # Hide cursor
+    [Console]::CursorVisible = $false
+
+    try {
+        while ($true) {
+            $key = [Console]::ReadKey($true)
+            if ($key.Key -eq [ConsoleKey]::UpArrow) {
+                if ($_selected -gt 0) { $_selected-- }
+            } elseif ($key.Key -eq [ConsoleKey]::DownArrow) {
+                if ($_selected -lt $_numTools - 1) { $_selected++ }
+            } elseif ($key.Key -eq [ConsoleKey]::Enter) {
+                break
+            }
+            # Redraw: move cursor up
+            [Console]::SetCursorPosition(0, [Console]::CursorTop - $_numTools)
+            for ($_i = 0; $_i -lt $_numTools; $_i++) {
+                $line = if ($_i -eq $_selected) { "  > $($_toolLabels[$_i])" } else { "    $($_toolLabels[$_i])" }
+                $padded = $line.PadRight([Console]::WindowWidth - 1)
+                if ($_i -eq $_selected) {
+                    Write-Host $padded -ForegroundColor Cyan
+                } else {
+                    Write-Host $padded
+                }
+            }
+        }
+    } finally {
+        [Console]::CursorVisible = $true
+    }
+
+    Write-Host ""
+    Write-Host "  Launching $($_toolLabels[$_selected])..."
+    Write-Host ""
+
+    $Assistant = $_toolKeys[$_selected]
+    $_toolSet = $true
+}
 
 # -- For claude / codex: delegate to existing proven launchers -----------------
 if ($Assistant -in @("claude","codex")) {

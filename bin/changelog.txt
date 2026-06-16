@@ -1,3 +1,8 @@
+3.9.99
+- Added: interactive arrow-key tool picker when running `graperoot` without a tool flag
+- Added: `graperoot --version` / `-v` to print current version
+- Added: `graperoot --update` to force self-update
+
 3.9.98
 - Fixed: remove non-ASCII em dash from openclaw message string (caused PowerShell parse error on Windows)
 

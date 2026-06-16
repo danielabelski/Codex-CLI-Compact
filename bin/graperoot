@@ -8,10 +8,13 @@
 #   graperoot [path] --gemini       # Google Gemini CLI
 #   graperoot [path] --antigravity  # Google Antigravity
 #   graperoot [path] --openclaw     # OpenClaw
+#   graperoot                       # Interactive tool picker
+#   graperoot --version             # Print version
+#   graperoot --update              # Force self-update
 #
 # The tool flag can come before or after the path.
 # Flags can be written with or without --  (e.g. cursor or --cursor).
-# Default tool: --claude.  Default path: current directory.
+# Default: interactive picker.  Default path: current directory.
 #
 # Examples:
 #   graperoot /path/to/project --claude
@@ -19,10 +22,19 @@
 #   graperoot /path/to/project gemini
 #   graperoot . --codex
 #   graperoot /path/to/project --claude --resume <session-id>
+#   graperoot                          # interactive picker
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# ── Version ───────────────────────────────────────────────────────────────────
+_show_version() {
+  local ver
+  ver="$(cat "$SCRIPT_DIR/version.txt" 2>/dev/null || echo "unknown")"
+  echo "graperoot $ver"
+  exit 0
+}
 
 # ── Help ──────────────────────────────────────────────────────────────────────
 _show_help() {
@@ -32,6 +44,9 @@ _show_help() {
 
   Usage:
     graperoot [path] <tool> [options]
+    graperoot [path]                   Interactive tool picker
+    graperoot --update                 Force self-update
+    graperoot --version                Print version
 
   Tools:
     --claude       Claude Code   (shorthand: dgc [path])
@@ -45,10 +60,14 @@ _show_help() {
 
   Options:
     --resume <id>    Resume a previous claude / codex session
+    --update         Force update to latest version
+    --version, -v    Show version
     --help, -h, ?    Show this help
 
   Examples:
-    graperoot . --claude
+    graperoot                          # interactive picker in current dir
+    graperoot .                        # interactive picker in current dir
+    graperoot . --claude               # launch Claude Code directly
     graperoot /my/project --cursor
     graperoot /my/project --gemini
     graperoot /my/project --opencode
@@ -56,18 +75,144 @@ _show_help() {
     graperoot /my/project --antigravity
     graperoot /my/project --openclaw
     graperoot /my/project --claude --resume <session-id>
-    dgc .                          # same as graperoot . --claude
-    dg  .                          # same as graperoot . --codex
+    dgc .                              # same as graperoot . --claude
+    dg  .                              # same as graperoot . --codex
 
 HELP
   exit 0
 }
 
+# ── Self-update (--update flag) ───────────────────────────────────────────────
+_force_update() {
+  local _R2="https://pub-18426978d5a14bf4a60ddedd7d5b6dab.r2.dev"
+  local _BASE_URL="https://raw.githubusercontent.com/kunal12203/Codex-CLI-Compact/main"
+  local _LOCAL_VER
+  _LOCAL_VER="$(cat "$SCRIPT_DIR/version.txt" 2>/dev/null || echo "0")"
+  local _REMOTE_VER
+  _REMOTE_VER="$(curl -sf --max-time 5 "$_BASE_URL/bin/version.txt" 2>/dev/null \
+    || curl -sf --max-time 5 "$_R2/version.txt" 2>/dev/null || echo "")"
+
+  if [[ -z "$_REMOTE_VER" ]]; then
+    echo "[graperoot] ERROR: could not reach update server."
+    exit 1
+  fi
+
+  echo "[graperoot] Local version : $_LOCAL_VER"
+  echo "[graperoot] Remote version: $_REMOTE_VER"
+  echo "[graperoot] Downloading latest launcher files..."
+
+  curl -fsSL --max-time 30 "$_BASE_URL/bin/dual_graph_launch.sh" -o "$SCRIPT_DIR/dual_graph_launch.sh" \
+    || curl -fsSL --max-time 30 "$_R2/dual_graph_launch.sh" -o "$SCRIPT_DIR/dual_graph_launch.sh"
+  chmod +x "$SCRIPT_DIR/dual_graph_launch.sh"
+
+  curl -fsSL --max-time 15 "$_BASE_URL/bin/graperoot" -o "$SCRIPT_DIR/graperoot" 2>/dev/null \
+    && chmod +x "$SCRIPT_DIR/graperoot" || true
+  curl -fsSL --max-time 15 "$_BASE_URL/bin/graperoot.cmd" -o "$SCRIPT_DIR/graperoot.cmd" 2>/dev/null || true
+  curl -fsSL --max-time 15 "$_BASE_URL/bin/graperoot.ps1" -o "$SCRIPT_DIR/graperoot.ps1" 2>/dev/null || true
+  curl -fsSL --max-time 15 "$_BASE_URL/bin/dgc.ps1" -o "$SCRIPT_DIR/dgc.ps1" 2>/dev/null || true
+  curl -fsSL --max-time 15 "$_BASE_URL/bin/dg.ps1" -o "$SCRIPT_DIR/dg.ps1" 2>/dev/null || true
+
+  echo "$_REMOTE_VER" > "$SCRIPT_DIR/version.txt"
+
+  # Upgrade graperoot Python package
+  local _VENV_PIP="$SCRIPT_DIR/venv/bin/pip"
+  if [[ -x "$_VENV_PIP" ]]; then
+    echo "[graperoot] Upgrading graperoot Python package..."
+    "$_VENV_PIP" install graperoot --upgrade --quiet 2>/dev/null || true
+  fi
+
+  echo "[graperoot] Updated to $_REMOTE_VER."
+  exit 0
+}
+
+# ── Interactive tool picker ───────────────────────────────────────────────────
+_interactive_picker() {
+  local project_dir="$1"
+
+  echo ""
+  echo "  graperoot — Dual-Graph AI tool launcher"
+  echo ""
+  printf "  Working directory: \033[1m%s\033[0m\n" "$project_dir"
+  printf "  Continue? [Y/n]: "
+  local confirm=""
+  read -r -t 30 confirm 2>/dev/null || confirm=""
+  if [[ "$confirm" =~ ^[Nn] ]]; then
+    echo "  Cancelled."
+    exit 0
+  fi
+  echo ""
+
+  local tool_keys tool_labels num_tools selected
+  tool_keys=("claude" "codex" "cursor" "gemini" "opencode" "copilot" "antigravity" "openclaw")
+  tool_labels=("Claude Code" "OpenAI Codex" "Cursor" "Gemini CLI" "OpenCode" "GitHub Copilot" "Antigravity" "OpenClaw")
+  num_tools=${#tool_keys[@]}
+  selected=0
+
+  _draw_menu() {
+    local sel=$1
+    local i
+    for (( i=0; i<num_tools; i++ )); do
+      if (( i == sel )); then
+        printf "  \033[36m> %s\033[0m\n" "${tool_labels[$i]}"
+      else
+        printf "    %s\n" "${tool_labels[$i]}"
+      fi
+    done
+  }
+
+  echo "  Select tool (arrow keys to navigate, Enter to select):"
+  echo ""
+  _draw_menu $selected
+
+  # Hide cursor
+  printf "\033[?25l"
+  # Restore cursor on exit/interrupt
+  trap 'printf "\033[?25h"' EXIT INT TERM
+
+  # Read arrow keys (bash 3.2 compatible — no fractional -t)
+  while true; do
+    local key=""
+    IFS= read -rsn1 key
+    if [[ "$key" == $'\x1b' ]]; then
+      local seq=""
+      read -rsn2 -t 1 seq || true
+      case "$seq" in
+        "[A") # Up
+          (( selected > 0 )) && (( selected-- )) || true
+          ;;
+        "[B") # Down
+          (( selected < num_tools - 1 )) && (( selected++ )) || true
+          ;;
+      esac
+      # Redraw: move cursor up num_tools lines
+      printf "\033[%dA" "$num_tools"
+      _draw_menu $selected
+    elif [[ "$key" == "" ]]; then
+      # Enter pressed
+      break
+    fi
+  done
+
+  # Show cursor
+  printf "\033[?25h"
+  trap - EXIT INT TERM
+  echo ""
+  echo "  Launching ${tool_labels[$selected]}..."
+  echo ""
+
+  ASSISTANT="${tool_keys[$selected]}"
+}
+
+# ── Parse arguments ───────────────────────────────────────────────────────────
 for _a in "$@"; do
-  case "$_a" in --help|-h|\?) _show_help ;; esac
+  case "$_a" in
+    --help|-h|\?) _show_help ;;
+    --version|-v) _show_version ;;
+    --update) _force_update ;;
+  esac
 done
 
-ASSISTANT="claude"   # default
+ASSISTANT="claude"   # default (overridden by picker or flag)
 PROJECT=""
 PASSTHROUGH=()
 
@@ -128,6 +273,11 @@ if ! $_TOOL_SET; then
 fi
 
 [[ -z "$PROJECT" ]] && PROJECT="$(pwd)"
+
+# ── Interactive picker when no tool flag given and stdin is a terminal ─────────
+if ! $_TOOL_SET && [[ -t 0 ]] && [[ -t 1 ]]; then
+  _interactive_picker "$PROJECT"
+fi
 
 exec "$SCRIPT_DIR/dual_graph_launch.sh" "$ASSISTANT" "$PROJECT" --toolname graperoot \
   "${PASSTHROUGH[@]+"${PASSTHROUGH[@]}"}"
