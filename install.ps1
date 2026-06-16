@@ -244,12 +244,14 @@ try {
             if ($ver -match "3, (1[0-9]|[2-9][0-9])") { $pythonExe = $candidate; break }
         }
     }
+    # Detect old (< 3.10) Python when no 3.10+ was found
+    $oldPythonExe = $null
     if (-not $pythonExe) {
         foreach ($candidate in @("python3", "python")) {
             if (Get-Command $candidate -ErrorAction SilentlyContinue) {
                 if (Test-WindowsStoreStub $candidate) { continue }
                 $ver = & $candidate -c "import sys; print(sys.version_info[:2])" 2>$null
-                if ($ver -match "3,") { $pythonExe = $candidate; break }
+                if ($ver -match "3,") { $oldPythonExe = $candidate; break }
             }
         }
     }
@@ -257,6 +259,34 @@ try {
     if ($pythonExe) {
         $verStr = & $pythonExe --version 2>&1
         Write-Host "[check] Python found: $verStr" -ForegroundColor Green
+    } elseif ($oldPythonExe) {
+        $verStr = & $oldPythonExe --version 2>&1
+        Write-Host "[check] ERROR: $verStr found but Python 3.10+ is required (mcp package requires Python 3.10+)." -ForegroundColor Red
+        Write-Host "[check] Please upgrade Python to 3.10 or newer." -ForegroundColor Yellow
+        if ($hasWinget) {
+            if (Confirm-Install "[check] Install Python 3.11 via winget now?") {
+                Write-Host "[install] Installing Python 3.11..."
+                winget install Python.Python.3.11 --accept-source-agreements --accept-package-agreements --silent
+                if ($LASTEXITCODE -eq 0) {
+                    Write-Host "[install] Python 3.11 installed." -ForegroundColor Green
+                    $needsRestart = $true
+                } else {
+                    Write-Host "[install] Python install failed. Install manually from https://python.org/downloads" -ForegroundColor Red
+                    Write-Host "[install] Then run this installer again."
+                    exit 1
+                }
+            } else {
+                Write-Host ""
+                Write-Host "[install] Please install Python 3.10+ manually, then run this installer again:" -ForegroundColor Yellow
+                Write-Host "  winget install Python.Python.3.11" -ForegroundColor White
+                Write-Host "  (or download from https://www.python.org/downloads)" -ForegroundColor White
+                exit 0
+            }
+        } else {
+            Write-Host "[install] Please install Python 3.10 or newer from https://www.python.org/downloads" -ForegroundColor Yellow
+            Write-Host "[install] Then run this installer again."
+            exit 0
+        }
     } else {
         Write-Host "[check] Python is NOT installed." -ForegroundColor Yellow
         if ($hasWinget) {
