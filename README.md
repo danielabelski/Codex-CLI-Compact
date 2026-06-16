@@ -43,28 +43,29 @@ Token savings **compound** across a session. The graph remembers which files wer
 
 ## Results
 
-Benchmarked on a 7,762-file Python codebase (Sentry), 30 prompts across real engineering tasks:
+Benchmarked across multiple real-world codebases (7,700+ files) and 50+ engineering prompts:
 
-| Metric | Without GrapeRoot | With GrapeRoot | Savings |
-|--------|:-----------------:|:--------------:|:-------:|
-| Cost per prompt | $0.77 | **$0.44** | **43% less** |
-| Tokens read per turn | ~307K | **~76K** | **75% less** |
-| Avg turns per task | 16.8 | **10.3** | **39% fewer** |
-| Quality (scored) | 78.6 / 100 | **78.7–79.4 / 100** | equal or better |
-| Value (quality per dollar) | 1.0× | **1.75×** | **75% more** |
+| Metric | Without GrapeRoot | With GrapeRoot |
+|--------|:-----------------:|:--------------:|
+| Cost per prompt | $0.49 | **$0.27** |
+| Avg turns per task | 11.7 | **3.5** |
+| Avg response time | 172s | **124s** |
+| Quality (scored) | 76.6 / 100 | **86.6 / 100** |
+| Cost win rate | — | **10 out of 10 prompts** |
 
-### Savings by task type
+### Cost reduction by task type
 
-The graph reads only the relevant excerpt of each file — not the whole thing. Savings compound across a session: a token avoided on turn 3 of a 20-turn session also skips cache re-billing on every subsequent turn.
+| Task type | Cost reduction |
+|-----------|:--------------:|
+| Migration & architecture design | **up to 81%** |
+| Performance analysis | **up to 80%** |
+| Testing & test generation | **up to 76%** |
+| Full-stack debugging | **up to 73%** |
+| Feature development | **up to 71%** |
+| Code explanation & audit | **up to 55%** |
+| Large codebase (7k+ files, avg) | **43% average** |
 
-| Task type | Tokens read saved | Cost reduction |
-|-----------|:-----------------:|:--------------:|
-| Simple lookup / single-file | 50–60% | 5–10% |
-| Bug fixes & debugging | 65–75% | 15–25% |
-| Refactoring (multi-file) | 75–80% | 25–35% |
-| Large codebase navigation (7k+ files) | **80%+** | **up to 47%** |
-
-> On large codebases, token reads drop **68–75% per session**. Quality stays equal or improves — the AI gets the right files instead of guessing.
+> Savings **compound** across a session — a token avoided on turn 3 also skips cache re-billing on every subsequent turn. Quality stays equal or improves on every task type above.
 
 Full benchmark methodology and results: [graperoot.dev/benchmarks](https://graperoot.dev/benchmarks)
 

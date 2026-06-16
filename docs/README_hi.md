@@ -43,28 +43,29 @@ Token की बचत पूरे session में **compound** होती 
 
 ## परिणाम
 
-7,762 फाइलों वाले Python codebase (Sentry) पर benchmark किया गया, 30 prompts असली engineering tasks पर:
+कई वास्तविक codebases (7,700+ फाइलें) और 50+ engineering prompts पर benchmark किया गया:
 
-| मापदंड | GrapeRoot के बिना | GrapeRoot के साथ | बचत |
-|--------|:-----------------:|:--------------:|:---:|
-| प्रति prompt लागत | $0.77 | **$0.44** | **43% कम** |
-| प्रति turn पढ़े गए tokens | ~307K | **~76K** | **75% कम** |
-| प्रति task औसत turns | 16.8 | **10.3** | **39% कम** |
-| गुणवत्ता (scored) | 78.6 / 100 | **78.7–79.4 / 100** | बराबर या बेहतर |
-| Value (प्रति dollar गुणवत्ता) | 1.0× | **1.75×** | **75% अधिक** |
+| मापदंड | GrapeRoot के बिना | GrapeRoot के साथ |
+|--------|:-----------------:|:--------------:|
+| प्रति prompt लागत | $0.49 | **$0.27** |
+| प्रति task औसत turns | 11.7 | **3.5** |
+| औसत response time | 172s | **124s** |
+| गुणवत्ता (scored) | 76.6 / 100 | **86.6 / 100** |
+| लागत जीत दर | — | **10 में से 10 prompts** |
 
-### Task के प्रकार के अनुसार बचत
+### Task के प्रकार के अनुसार लागत में कमी
 
-Graph हर file का सिर्फ संबंधित हिस्सा पढ़ता है — पूरी file नहीं। बचत पूरे session में compound होती रहती है: 20-turn session के turn 3 पर बचाया गया token, हर बाद के turn में cache re-billing से भी बचाता है।
+| Task का प्रकार | लागत में कमी |
+|--------------|:-----------:|
+| Migration और architecture design | **81% तक** |
+| Performance analysis | **80% तक** |
+| Testing और test generation | **76% तक** |
+| Full-stack debugging | **73% तक** |
+| Feature development | **71% तक** |
+| Code explanation और audit | **55% तक** |
+| बड़ा codebase (7k+ files, औसत) | **औसत 43%** |
 
-| Task का प्रकार | पढ़े गए tokens की बचत | लागत में कमी |
-|--------------|:--------------------:|:-----------:|
-| सरल query / एकल-file | 50–60% | 5–10% |
-| Bug fixes और debugging | 65–75% | 15–25% |
-| Refactoring (multi-file) | 75–80% | 25–35% |
-| बड़े codebase में navigation (7k+ files) | **80%+** | **47% तक** |
-
-> बड़े codebases पर, प्रति session token reads **68–75% कम** हो जाते हैं। गुणवत्ता बराबर रहती है या सुधरती है — AI को सही files मिलती हैं, अंदाजे से नहीं।
+> बचत पूरे session में **compound** होती रहती है — turn 3 पर बचाया गया token, हर बाद के turn में cache re-billing से भी बचाता है। ऊपर दिए गए हर task type में गुणवत्ता बराबर रहती है या सुधरती है।
 
 पूरी benchmark methodology और results: [graperoot.dev/benchmarks](https://graperoot.dev/benchmarks)
 

@@ -43,28 +43,29 @@ Les économies de tokens se **cumulent** tout au long d'une session. Le graphe s
 
 ## Résultats
 
-Évalué sur une base de code Python de 7 762 fichiers (Sentry), 30 prompts couvrant de vraies tâches d'ingénierie :
+Évalué sur plusieurs bases de code réelles (plus de 7 700 fichiers) et plus de 50 prompts d'ingénierie :
 
-| Métrique | Sans GrapeRoot | Avec GrapeRoot | Économies |
-|----------|:--------------:|:--------------:|:---------:|
-| Coût par prompt | $0.77 | **$0.44** | **43% de moins** |
-| Tokens lus par tour | ~307K | **~76K** | **75% de moins** |
-| Tours moyens par tâche | 16.8 | **10.3** | **39% de moins** |
-| Qualité (évaluée) | 78.6 / 100 | **78.7–79.4 / 100** | égale ou meilleure |
-| Valeur (qualité par dollar) | 1.0× | **1.75×** | **75% de plus** |
+| Métrique | Sans GrapeRoot | Avec GrapeRoot |
+|----------|:--------------:|:--------------:|
+| Coût par prompt | $0.49 | **$0.27** |
+| Tours moyens par tâche | 11.7 | **3.5** |
+| Temps de réponse moyen | 172s | **124s** |
+| Qualité (évaluée) | 76.6 / 100 | **86.6 / 100** |
+| Taux de victoire sur les coûts | — | **10 prompts sur 10** |
 
-### Économies par type de tâche
+### Réduction des coûts par type de tâche
 
-Le graphe lit uniquement l'extrait pertinent de chaque fichier — pas l'intégralité. Les économies s'accumulent tout au long d'une session : un token évité au tour 3 d'une session de 20 tours évite également la refacturation du cache à chaque tour suivant.
+| Type de tâche | Réduction du coût |
+|---------------|:-----------------:|
+| Migration et conception d'architecture | **jusqu'à 81%** |
+| Analyse des performances | **jusqu'à 80%** |
+| Tests et génération de tests | **jusqu'à 76%** |
+| Débogage full-stack | **jusqu'à 73%** |
+| Développement de fonctionnalités | **jusqu'à 71%** |
+| Explication et audit de code | **jusqu'à 55%** |
+| Grande base de code (7k+ fichiers, moy.) | **43% en moyenne** |
 
-| Type de tâche | Tokens lus économisés | Réduction du coût |
-|---------------|:---------------------:|:-----------------:|
-| Recherche simple / fichier unique | 50–60% | 5–10% |
-| Corrections de bugs et débogage | 65–75% | 15–25% |
-| Refactorisation (multi-fichiers) | 75–80% | 25–35% |
-| Navigation dans une grande base de code (7k+ fichiers) | **80%+** | **jusqu'à 47%** |
-
-> Sur les grandes bases de code, les lectures de tokens baissent de **68–75% par session**. La qualité reste égale ou s'améliore — l'IA reçoit les bons fichiers plutôt que de deviner.
+> Les économies se **cumulent** tout au long d'une session — un token évité au tour 3 évite également la refacturation du cache à chaque tour suivant. La qualité reste égale ou s'améliore pour chaque type de tâche ci-dessus.
 
 Méthodologie complète et résultats des benchmarks : [graperoot.dev/benchmarks](https://graperoot.dev/benchmarks)
 

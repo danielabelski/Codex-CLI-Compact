@@ -43,28 +43,29 @@ A economia de tokens **se acumula** ao longo de uma sessão. O grafo lembra quai
 
 ## Resultados
 
-Avaliado em uma base de código Python de 7.762 arquivos (Sentry), 30 prompts abrangendo tarefas reais de engenharia:
+Avaliado em múltiplas bases de código reais (mais de 7.700 arquivos) e mais de 50 prompts de engenharia:
 
-| Métrica | Sem GrapeRoot | Com GrapeRoot | Economia |
-|---------|:-------------:|:-------------:|:--------:|
-| Custo por prompt | $0.77 | **$0.44** | **43% menos** |
-| Tokens lidos por turno | ~307K | **~76K** | **75% menos** |
-| Turnos médios por tarefa | 16.8 | **10.3** | **39% menos** |
-| Qualidade (pontuada) | 78.6 / 100 | **78.7–79.4 / 100** | igual ou melhor |
-| Valor (qualidade por dólar) | 1.0× | **1.75×** | **75% mais** |
+| Métrica | Sem GrapeRoot | Com GrapeRoot |
+|---------|:-------------:|:-------------:|
+| Custo por prompt | $0.49 | **$0.27** |
+| Turnos médios por tarefa | 11.7 | **3.5** |
+| Tempo médio de resposta | 172s | **124s** |
+| Qualidade (pontuada) | 76.6 / 100 | **86.6 / 100** |
+| Taxa de vitória em custo | — | **10 de 10 prompts** |
 
-### Economia por tipo de tarefa
+### Redução de custo por tipo de tarefa
 
-O grafo lê apenas o trecho relevante de cada arquivo — não o arquivo inteiro. As economias se acumulam ao longo de uma sessão: um token evitado no turno 3 de uma sessão de 20 turnos também evita a refaturação do cache em cada turno subsequente.
+| Tipo de tarefa | Redução de custo |
+|----------------|:----------------:|
+| Migração e design de arquitetura | **até 81%** |
+| Análise de desempenho | **até 80%** |
+| Testes e geração de testes | **até 76%** |
+| Depuração full-stack | **até 73%** |
+| Desenvolvimento de funcionalidades | **até 71%** |
+| Explicação e auditoria de código | **até 55%** |
+| Grande codebase (7k+ arquivos, média) | **43% de média** |
 
-| Tipo de tarefa | Tokens lidos economizados | Redução de custo |
-|----------------|:-------------------------:|:----------------:|
-| Consulta simples / arquivo único | 50–60% | 5–10% |
-| Correção de bugs e depuração | 65–75% | 15–25% |
-| Refatoração (múltiplos arquivos) | 75–80% | 25–35% |
-| Navegação em grandes codebases (7k+ arquivos) | **80%+** | **até 47%** |
-
-> Em grandes codebases, as leituras de tokens caem **68–75% por sessão**. A qualidade permanece igual ou melhora — a IA recebe os arquivos certos em vez de adivinhar.
+> As economias se **acumulam** ao longo de uma sessão — um token evitado no turno 3 também evita a refaturação do cache em cada turno subsequente. A qualidade permanece igual ou melhora em cada tipo de tarefa acima.
 
 Metodologia completa e resultados do benchmark: [graperoot.dev/benchmarks](https://graperoot.dev/benchmarks)
 

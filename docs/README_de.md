@@ -43,28 +43,29 @@ Die Token-Einsparungen **summieren** sich über eine Sitzung hinweg. Der Graph m
 
 ## Ergebnisse
 
-Benchmarks auf einer Python-Codebasis mit 7.762 Dateien (Sentry), 30 Prompts aus echten Engineering-Aufgaben:
+Benchmarks auf mehreren realen Codebasen (über 7.700 Dateien) und mehr als 50 Engineering-Prompts:
 
-| Metrik | Ohne GrapeRoot | Mit GrapeRoot | Einsparung |
-|--------|:--------------:|:-------------:|:----------:|
-| Kosten pro Prompt | $0.77 | **$0.44** | **43% weniger** |
-| Gelesene Tokens pro Runde | ~307K | **~76K** | **75% weniger** |
-| Durchschn. Runden pro Aufgabe | 16.8 | **10.3** | **39% weniger** |
-| Qualität (bewertet) | 78.6 / 100 | **78.7–79.4 / 100** | gleich oder besser |
-| Wert (Qualität pro Dollar) | 1.0× | **1.75×** | **75% mehr** |
+| Metrik | Ohne GrapeRoot | Mit GrapeRoot |
+|--------|:--------------:|:-------------:|
+| Kosten pro Prompt | $0.49 | **$0.27** |
+| Durchschn. Runden pro Aufgabe | 11.7 | **3.5** |
+| Durchschn. Antwortzeit | 172s | **124s** |
+| Qualität (bewertet) | 76.6 / 100 | **86.6 / 100** |
+| Kostengewinnrate | — | **10 von 10 Prompts** |
 
-### Einsparungen nach Aufgabentyp
+### Kostenreduzierung nach Aufgabentyp
 
-Der Graph liest nur den relevanten Ausschnitt jeder Datei — nicht die gesamte Datei. Die Einsparungen summieren sich über eine Sitzung hinweg: Ein in Runde 3 einer 20-Runden-Sitzung eingesparter Token vermeidet auch die Cache-Neuabrechnung in jeder nachfolgenden Runde.
+| Aufgabentyp | Kostenreduzierung |
+|-------------|:-----------------:|
+| Migration & Architekturdesign | **bis zu 81%** |
+| Leistungsanalyse | **bis zu 80%** |
+| Tests & Testgenerierung | **bis zu 76%** |
+| Full-Stack-Debugging | **bis zu 73%** |
+| Funktionsentwicklung | **bis zu 71%** |
+| Code-Erklärung & Audit | **bis zu 55%** |
+| Große Codebasis (7k+ Dateien, Durchschn.) | **43% im Durchschnitt** |
 
-| Aufgabentyp | Eingesparte gelesene Tokens | Kostenreduzierung |
-|-------------|:---------------------------:|:-----------------:|
-| Einfache Suche / Einzeldatei | 50–60% | 5–10% |
-| Bugfixes & Debugging | 65–75% | 15–25% |
-| Refaktorierung (mehrere Dateien) | 75–80% | 25–35% |
-| Navigation in großen Codebasen (7k+ Dateien) | **80%+** | **bis zu 47%** |
-
-> Bei großen Codebasen sinken die Token-Lesevorgänge um **68–75% pro Sitzung**. Die Qualität bleibt gleich oder verbessert sich — die KI bekommt die richtigen Dateien, anstatt zu raten.
+> Die Einsparungen **summieren sich** über eine Sitzung hinweg — ein in Runde 3 eingesparter Token vermeidet auch die Cache-Neuabrechnung in jeder nachfolgenden Runde. Die Qualität bleibt bei jedem der oben genannten Aufgabentypen gleich oder verbessert sich.
 
 Vollständige Benchmark-Methodik und Ergebnisse: [graperoot.dev/benchmarks](https://graperoot.dev/benchmarks)
 

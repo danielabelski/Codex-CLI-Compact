@@ -43,28 +43,29 @@ Penghematan token **berlipat ganda** sepanjang sesi. Graf mengingat file mana ya
 
 ## Hasil
 
-Diuji pada basis kode Python dengan 7.762 file (Sentry), 30 prompt dari tugas rekayasa nyata:
+Diuji pada beberapa basis kode nyata (lebih dari 7.700 file) dan lebih dari 50 prompt rekayasa:
 
-| Metrik | Tanpa GrapeRoot | Dengan GrapeRoot | Penghematan |
-|--------|:---------------:|:----------------:|:-----------:|
-| Biaya per prompt | $0.77 | **$0.44** | **43% lebih hemat** |
-| Token yang dibaca per giliran | ~307K | **~76K** | **75% lebih hemat** |
-| Rata-rata giliran per tugas | 16.8 | **10.3** | **39% lebih sedikit** |
-| Kualitas (skor) | 78.6 / 100 | **78.7–79.4 / 100** | setara atau lebih baik |
-| Nilai (kualitas per dolar) | 1.0× | **1.75×** | **75% lebih tinggi** |
+| Metrik | Tanpa GrapeRoot | Dengan GrapeRoot |
+|--------|:---------------:|:----------------:|
+| Biaya per prompt | $0.49 | **$0.27** |
+| Rata-rata giliran per tugas | 11.7 | **3.5** |
+| Rata-rata waktu respons | 172s | **124s** |
+| Kualitas (skor) | 76.6 / 100 | **86.6 / 100** |
+| Tingkat kemenangan biaya | — | **10 dari 10 prompt** |
 
-### Penghematan berdasarkan jenis tugas
+### Pengurangan biaya berdasarkan jenis tugas
 
-Graf hanya membaca bagian yang relevan dari setiap file — bukan seluruhnya. Penghematan berlipat ganda sepanjang sesi: token yang dihindari pada giliran 3 dari sesi 20 giliran juga menghindari penagihan ulang cache di setiap giliran berikutnya.
+| Jenis tugas | Pengurangan biaya |
+|-------------|:-----------------:|
+| Migrasi & desain arsitektur | **hingga 81%** |
+| Analisis kinerja | **hingga 80%** |
+| Pengujian & pembuatan tes | **hingga 76%** |
+| Debugging full-stack | **hingga 73%** |
+| Pengembangan fitur | **hingga 71%** |
+| Penjelasan & audit kode | **hingga 55%** |
+| Basis kode besar (7k+ file, rata-rata) | **rata-rata 43%** |
 
-| Jenis tugas | Token yang dibaca dihemat | Pengurangan biaya |
-|-------------|:-------------------------:|:-----------------:|
-| Pencarian sederhana / satu file | 50–60% | 5–10% |
-| Perbaikan bug & debugging | 65–75% | 15–25% |
-| Refaktor (multi-file) | 75–80% | 25–35% |
-| Navigasi basis kode besar (7k+ file) | **80%+** | **hingga 47%** |
-
-> Pada basis kode besar, pembacaan token turun **68–75% per sesi**. Kualitas tetap setara atau meningkat — AI mendapatkan file yang tepat alih-alih menebak.
+> Penghematan **berlipat ganda** sepanjang sesi — token yang dihindari pada giliran 3 juga menghindari penagihan ulang cache di setiap giliran berikutnya. Kualitas tetap setara atau meningkat pada setiap jenis tugas di atas.
 
 Metodologi dan hasil benchmark lengkap: [graperoot.dev/benchmarks](https://graperoot.dev/benchmarks)
 

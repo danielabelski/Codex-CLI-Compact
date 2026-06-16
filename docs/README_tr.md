@@ -43,28 +43,29 @@ Token tasarrufu bir oturum boyunca **birikerek** artar. Grafik hangi dosyaların
 
 ## Sonuçlar
 
-7.762 dosyalık bir Python kod tabanında (Sentry) gerçek mühendislik görevlerinden oluşan 30 istemle kıyaslandı:
+Birden fazla gerçek kod tabanında (7.700'den fazla dosya) ve 50'den fazla mühendislik istemiyle kıyaslandı:
 
-| Ölçüt | GrapeRoot Olmadan | GrapeRoot ile | Tasarruf |
-|-------|:-----------------:|:-------------:|:--------:|
-| İstem başına maliyet | $0.77 | **$0.44** | **%43 daha az** |
-| Tur başına okunan token | ~307K | **~76K** | **%75 daha az** |
-| Görev başına ortalama tur sayısı | 16.8 | **10.3** | **%39 daha az** |
-| Kalite (puanlanmış) | 78.6 / 100 | **78.7–79.4 / 100** | eşit ya da daha iyi |
-| Değer (dolar başına kalite) | 1.0× | **1.75×** | **%75 daha fazla** |
+| Ölçüt | GrapeRoot Olmadan | GrapeRoot ile |
+|-------|:-----------------:|:-------------:|
+| İstem başına maliyet | $0.49 | **$0.27** |
+| Görev başına ortalama tur sayısı | 11.7 | **3.5** |
+| Ortalama yanıt süresi | 172s | **124s** |
+| Kalite (puanlanmış) | 76.6 / 100 | **86.6 / 100** |
+| Maliyet kazanma oranı | — | **10 istemden 10'u** |
 
-### Görev türüne göre tasarruf
+### Görev türüne göre maliyet azalması
 
-Graf, her dosyanın tamamını değil yalnızca ilgili bölümünü okur. Tasarruflar bir oturum boyunca birikerek artar: 20 turlu bir oturumda 3. turda önlenen bir token, sonraki her turda önbellek yeniden faturalandırmasını da engeller.
+| Görev türü | Maliyet azalması |
+|------------|:----------------:|
+| Geçiş ve mimari tasarım | **%81'e kadar** |
+| Performans analizi | **%80'e kadar** |
+| Test ve test oluşturma | **%76'ya kadar** |
+| Full-stack hata ayıklama | **%73'e kadar** |
+| Özellik geliştirme | **%71'e kadar** |
+| Kod açıklama ve denetim | **%55'e kadar** |
+| Büyük kod tabanı (7k+ dosya, ort.) | **ortalama %43** |
 
-| Görev türü | Okunan token tasarrufu | Maliyet azalması |
-|------------|:----------------------:|:----------------:|
-| Basit arama / tek dosya | 50–60% | 5–10% |
-| Hata düzeltme ve hata ayıklama | 65–75% | 15–25% |
-| Yeniden yapılandırma (çok dosyalı) | 75–80% | 25–35% |
-| Büyük kod tabanında gezinme (7k+ dosya) | **80%+** | **%47'ye kadar** |
-
-> Büyük kod tabanlarında, oturum başına token okuma sayısı **%68–75 azalır**. Kalite eşit kalır ya da iyileşir — yapay zeka tahmin etmek yerine doğru dosyaları alır.
+> Tasarruflar bir oturum boyunca **birikerek** artar — 3. turda önlenen bir token, sonraki her turda önbellek yeniden faturalandırmasını da engeller. Kalite, yukarıdaki tüm görev türlerinde eşit kalır ya da iyileşir.
 
 Tam kıyaslama metodolojisi ve sonuçları: [graperoot.dev/benchmarks](https://graperoot.dev/benchmarks)
 
