@@ -669,7 +669,7 @@ try {
     try { & taskkill /F /IM "graph-builder.exe" /T 2>$null } catch {}
     # Also kill by port (catches renamed or custom server processes)
     try {
-        Get-NetTCPConnection -LocalPort (8080..8099) -State Listen -ErrorAction SilentlyContinue |
+        Get-NetTCPConnection -LocalPort (8080..8199) -State Listen -ErrorAction SilentlyContinue |
             Select-Object -ExpandProperty OwningProcess -Unique |
             ForEach-Object { try { Stop-Process -Id $_ -Force -ErrorAction SilentlyContinue } catch {} }
     } catch {}
@@ -968,7 +968,7 @@ Keep ``CONTEXT.md`` under 20 lines total. Do NOT summarize the full conversation
     # taskkill /F works across terminal sessions; Stop-Process only works within same session.
     try { & taskkill /F /IM "mcp-graph-server.exe" /T 2>$null } catch {}
     try {
-        Get-NetTCPConnection -LocalPort (8080..8099) -State Listen -ErrorAction SilentlyContinue |
+        Get-NetTCPConnection -LocalPort (8080..8199) -State Listen -ErrorAction SilentlyContinue |
             Select-Object -ExpandProperty OwningProcess -Unique |
             ForEach-Object { try { Stop-Process -Id $_ -Force -ErrorAction SilentlyContinue } catch {} }
     } catch {}

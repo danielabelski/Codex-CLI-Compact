@@ -576,7 +576,7 @@ else
   CURRENT_STEP="Selecting port"
   MCP_PORT=8080
   _port_in_use() {
-    # Try to actually bind to 127.0.0.1:port (matches server bind address)
+    # Bind 127.0.0.1 to match the server's bind address.
     if python3 -c "
 import socket, sys
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)

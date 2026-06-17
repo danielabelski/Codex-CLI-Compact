@@ -1,3 +1,9 @@
+3.10.1
+- Fixed: MCP server now binds 127.0.0.1 instead of 0.0.0.0 (localhost-only, more secure)
+- Fixed: concurrent dgc sessions no longer crash with "no free port" — server scan widened from 20 to 120 ports matching launcher range 8080-8199
+- Fixed: OverflowError on port > 65515 now caught properly alongside OSError
+- Fixed: launcher port probe uses same bind address as server so concurrent launches pick distinct ports
+
 3.10.0
 - Fixed: install.ps1 now detects Python < 3.10 and shows a clear error with upgrade instructions instead of silently failing at MCP import
 
