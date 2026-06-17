@@ -1,3 +1,6 @@
+3.10.2
+- Fixed: Windows crash "PositionalParameterNotFound -toolname" when running graperoot --codex
+
 3.10.1
 - Fixed: MCP server now binds 127.0.0.1 instead of 0.0.0.0 (localhost-only, more secure)
 - Fixed: concurrent dgc sessions no longer crash with "no free port" — server scan widened from 20 to 120 ports matching launcher range 8080-8199

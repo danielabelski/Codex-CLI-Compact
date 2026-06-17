@@ -357,8 +357,6 @@ if ($Assistant -in @("claude","codex")) {
         }
     }
     $invokeArgs = @($ProjectPath) + $Passthrough
-    $invokeArgs += "-toolname"
-    $invokeArgs += $RuntimeToolName
     if ($Resume) { $invokeArgs += "--resume"; $invokeArgs += $Resume }
     & $Target @invokeArgs
     exit $LASTEXITCODE

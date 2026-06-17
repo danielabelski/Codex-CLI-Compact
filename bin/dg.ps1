@@ -2,7 +2,7 @@
 param(
     [Parameter(Position = 0)]
     [string]$ProjectPath = ".",
-    [string]$toolname = "codex"
+    [string]$toolname = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -20,7 +20,8 @@ function Normalize-ToolName([string]$Value) {
     if ($v -in @("claude", "codex", "graperoot")) { return $v }
     return "unknown"
 }
-$RuntimeToolName = Normalize-ToolName $toolname
+$effectiveToolname = if ($toolname) { $toolname } elseif ($env:DG_TOOLNAME) { $env:DG_TOOLNAME } else { "codex" }
+$RuntimeToolName = Normalize-ToolName $effectiveToolname
 $env:DG_TOOLNAME = $RuntimeToolName
 
 function Get-MachineId {
