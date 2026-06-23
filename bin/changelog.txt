@@ -1,3 +1,7 @@
+3.10.3
+- Added: Kilocode support (--kilocode flag) with dual-graph MCP integration across Mac, Linux, and Windows
+- Added: MiMo Code support (--mimocode flag) with dual-graph MCP integration across Mac, Linux, and Windows
+
 3.10.2
 - Fixed: Windows crash "PositionalParameterNotFound -toolname" when running graperoot --codex
 

@@ -11,6 +11,8 @@
 #   graperoot [path] --copilot      GitHub Copilot (VS Code)
 #   graperoot [path] --antigravity  Google Antigravity
 #   graperoot [path] --openclaw     OpenClaw
+#   graperoot [path] --kilocode    Kilocode
+#   graperoot [path] --mimocode    MiMo Code (Xiaomi)
 
 param(
     [Parameter(Position = 0)] [string]$Arg0 = ".",
@@ -25,6 +27,8 @@ param(
     [switch]$copilot,
     [switch]$antigravity,
     [switch]$openclaw,
+    [switch]$kilocode,
+    [switch]$mimocode,
     [string]$toolname = "graperoot"
 )
 
@@ -148,6 +152,8 @@ if ($Arg0 -in @("--help","-h","?","/?")) {
     Write-Host "    --copilot      GitHub Copilot (VS Code)"
     Write-Host "    --antigravity  Google Antigravity"
     Write-Host "    --openclaw     OpenClaw"
+    Write-Host "    --kilocode    Kilocode"
+    Write-Host "    --mimocode    MiMo Code"
     Write-Host ""
     Write-Host "  Options:"
     Write-Host "    --resume <id>    Resume a previous claude / codex session"
@@ -165,6 +171,8 @@ if ($Arg0 -in @("--help","-h","?","/?")) {
     Write-Host "    graperoot C:\my\project --copilot"
     Write-Host "    graperoot C:\my\project --antigravity"
     Write-Host "    graperoot C:\my\project --openclaw"
+    Write-Host "    graperoot C:\my\project --kilocode"
+    Write-Host "    graperoot C:\my\project --mimocode"
     Write-Host "    graperoot C:\my\project --claude --resume <session-id>"
     Write-Host "    dgc .                        # same as graperoot . --claude"
     Write-Host "    dg  .                        # same as graperoot . --codex"
@@ -188,7 +196,7 @@ $env:DG_TOOLNAME = $RuntimeToolName
 $Assistant   = "claude"   # default
 $ProjectPath = ""
 $Passthrough = @()
-$_validTools = @("claude","codex","cursor","gemini","opencode","copilot","antigravity","openclaw")
+$_validTools = @("claude","codex","cursor","gemini","opencode","copilot","antigravity","openclaw","kilocode","mimocode")
 $_toolSet    = $false
 $_inputArgs  = @($Arg0, $Arg1, $Arg2)
 if ($args) { $_inputArgs += $args }
@@ -201,6 +209,8 @@ elseif ($gemini)      { $Assistant = "gemini";       $_toolSet = $true }
 elseif ($copilot)     { $Assistant = "copilot";      $_toolSet = $true }
 elseif ($antigravity) { $Assistant = "antigravity";  $_toolSet = $true }
 elseif ($openclaw)    { $Assistant = "openclaw";     $_toolSet = $true }
+elseif ($kilocode)    { $Assistant = "kilocode";     $_toolSet = $true }
+elseif ($mimocode)    { $Assistant = "mimocode";     $_toolSet = $true }
 elseif ($codex)       { $Assistant = "codex";        $_toolSet = $true }
 elseif ($claude)      { $Assistant = "claude";       $_toolSet = $true }
 
@@ -215,6 +225,8 @@ while ($_argIndex -lt $_inputArgs.Count) {
     if ($arg -in @("--copilot","copilot"))       { $Assistant = "copilot";      $_toolSet = $true; $_argIndex++; continue }
     if ($arg -in @("--antigravity","antigravity")) { $Assistant = "antigravity"; $_toolSet = $true; $_argIndex++; continue }
     if ($arg -in @("--openclaw","openclaw"))       { $Assistant = "openclaw";    $_toolSet = $true; $_argIndex++; continue }
+    if ($arg -in @("--kilocode","kilocode"))       { $Assistant = "kilocode";    $_toolSet = $true; $_argIndex++; continue }
+    if ($arg -in @("--mimocode","mimocode"))       { $Assistant = "mimocode";    $_toolSet = $true; $_argIndex++; continue }
     if ($arg -match '^-{1,2}toolname=(.*)$') {
         $RuntimeToolName = Normalize-ToolName $Matches[1]
         $env:DG_TOOLNAME = $RuntimeToolName
@@ -283,8 +295,8 @@ if ($_canPickInteractive) {
     }
     Write-Host ""
 
-    $_toolKeys   = @("claude", "codex", "cursor", "gemini", "opencode", "copilot", "antigravity", "openclaw")
-    $_toolLabels = @("Claude Code", "OpenAI Codex", "Cursor", "Gemini CLI", "OpenCode", "GitHub Copilot", "Antigravity", "OpenClaw")
+    $_toolKeys   = @("claude", "codex", "cursor", "gemini", "opencode", "copilot", "antigravity", "openclaw", "kilocode", "mimocode")
+    $_toolLabels = @("Claude Code", "OpenAI Codex", "Cursor", "Gemini CLI", "OpenCode", "GitHub Copilot", "Antigravity", "OpenClaw", "Kilocode", "MiMo Code")
     $_numTools   = $_toolKeys.Count
     $_selected   = 0
 
@@ -1013,6 +1025,110 @@ with open(config_file, 'w', encoding='utf-8') as f:
     Write-Host "[$Tool] Starting openclaw agent..."
     Write-Host ""
     openclaw agent --local --message "I am ready to help. The dual-graph MCP server is connected - use graph_continue to start."
+}
+
+# -- Kilocode: write kilo.jsonc and launch ------------------------------------
+if ($Assistant -eq "kilocode") {
+    # Auto-install kilocode if missing
+    if (-not (Get-Command kilo -ErrorAction SilentlyContinue)) {
+        Write-Host "[$Tool] kilo not found - installing (this may take a minute)..."
+        try { npm install -g "@kilocode/cli" } catch {}
+        if (-not (Get-Command kilo -ErrorAction SilentlyContinue)) {
+            Write-Host "[$Tool] ERROR: could not auto-install kilocode."
+            Write-Host "[$Tool]   npm install -g @kilocode/cli"
+            Stop-Process -Id $mcpProc.Id -Force -ErrorAction SilentlyContinue
+            exit 1
+        }
+        Write-Host "[$Tool] kilocode installed."
+    }
+
+    # Write MCP entry into project-level kilo.jsonc
+    $KiloConf = Join-Path $ProjectPath "kilo.jsonc"
+    $kiloMcp = [PSCustomObject]@{}
+    if (Test-Path $KiloConf) {
+        try {
+            $parsed = Get-Content $KiloConf -Raw | ConvertFrom-Json
+            if ($parsed.mcp) { $kiloMcp = $parsed.mcp }
+        } catch {}
+    }
+    $kiloMcp | Add-Member -NotePropertyName "dual-graph" `
+        -NotePropertyValue ([PSCustomObject]@{ type = "remote"; url = "http://127.0.0.1:$McpPort/mcp"; enabled = $true }) -Force
+    $kiloOut = [PSCustomObject]@{ mcp = $kiloMcp }
+    $kiloTmp = [System.IO.Path]::GetTempFileName()
+    [System.IO.File]::WriteAllText($kiloTmp, ($kiloOut | ConvertTo-Json -Depth 5 -Compress))
+    & $Python -c "import json,sys;d=json.load(open(sys.argv[1]));open(sys.argv[2],'w',encoding='utf-8').write(json.dumps(d,indent=2)+'\n')" $kiloTmp $KiloConf
+    Remove-Item $kiloTmp -ErrorAction SilentlyContinue
+
+    Write-Host "[$Tool] MCP config written -> $KiloConf"
+    Write-Host "[$Tool] MCP URL: http://127.0.0.1:$McpPort/mcp"
+
+    # Write/append AGENTS.md (Kilocode reads rules from AGENTS.md)
+    $AgentsFile = Join-Path $ProjectPath "AGENTS.md"
+    $KiloPolicyMarker = "dgc-policy-v11"
+    if ((-not (Test-Path $AgentsFile)) -or (-not (Select-String -Path $AgentsFile -Pattern $KiloPolicyMarker -Quiet))) {
+        Write-Host "[$Tool] Writing AGENTS.md policy ..."
+        Write-PolicyBlock -FilePath $AgentsFile -Marker $KiloPolicyMarker
+        Write-Host "[$Tool] AGENTS.md updated."
+    }
+
+    Write-Host ""
+    Set-Location $ProjectPath
+    Write-Host "[$Tool] Starting kilocode..."
+    Write-Host ""
+    kilo
+}
+
+# -- MiMo Code: write .mimocode/mimocode.json and launch ---------------------
+if ($Assistant -eq "mimocode") {
+    # Auto-install mimo if missing
+    if (-not (Get-Command mimo -ErrorAction SilentlyContinue)) {
+        Write-Host "[$Tool] mimo not found - installing (this may take a minute)..."
+        try { npm install -g "@mimo-ai/cli" } catch {}
+        if (-not (Get-Command mimo -ErrorAction SilentlyContinue)) {
+            Write-Host "[$Tool] ERROR: could not auto-install mimo."
+            Write-Host "[$Tool]   npm install -g @mimo-ai/cli"
+            Stop-Process -Id $mcpProc.Id -Force -ErrorAction SilentlyContinue
+            exit 1
+        }
+        Write-Host "[$Tool] mimo installed."
+    }
+
+    # Write MCP entry into project-level .mimocode/mimocode.json
+    $MimoDir = Join-Path $ProjectPath ".mimocode"
+    New-Item -ItemType Directory -Force -Path $MimoDir | Out-Null
+    $MimoConf = Join-Path $MimoDir "mimocode.json"
+    $mimoMcp = [PSCustomObject]@{}
+    if (Test-Path $MimoConf) {
+        try {
+            $parsed = Get-Content $MimoConf -Raw | ConvertFrom-Json
+            if ($parsed.mcpServers) { $mimoMcp = $parsed.mcpServers }
+        } catch {}
+    }
+    $mimoMcp | Add-Member -NotePropertyName "dual-graph" `
+        -NotePropertyValue ([PSCustomObject]@{ url = "http://127.0.0.1:$McpPort/mcp" }) -Force
+    $mimoOut = [PSCustomObject]@{ mcpServers = $mimoMcp }
+    $mimoTmp = [System.IO.Path]::GetTempFileName()
+    [System.IO.File]::WriteAllText($mimoTmp, ($mimoOut | ConvertTo-Json -Depth 5 -Compress))
+    & $Python -c "import json,sys;d=json.load(open(sys.argv[1]));open(sys.argv[2],'w',encoding='utf-8').write(json.dumps(d,indent=2)+'\n')" $mimoTmp $MimoConf
+    Remove-Item $mimoTmp -ErrorAction SilentlyContinue
+
+    Write-Host "[$Tool] MCP config written -> $MimoConf"
+    Write-Host "[$Tool] MCP URL: http://127.0.0.1:$McpPort/mcp"
+
+    # Write/append AGENTS.md (MiMo Code reads rules from AGENTS.md/MEMORY.md)
+    $AgentsFile = Join-Path $ProjectPath "AGENTS.md"
+    $MimoPolicyMarker = "dgc-policy-v11"
+    if ((-not (Test-Path $AgentsFile)) -or (-not (Select-String -Path $AgentsFile -Pattern $MimoPolicyMarker -Quiet))) {
+        Write-Host "[$Tool] Writing AGENTS.md policy ..."
+        Write-PolicyBlock -FilePath $AgentsFile -Marker $MimoPolicyMarker
+        Write-Host "[$Tool] AGENTS.md updated."
+    }
+
+    Write-Host ""
+    Set-Location $ProjectPath
+    Write-Host "[$Tool] Starting mimo..."
+    Write-Host ""
+    mimo
 }
 
 # Cleanup

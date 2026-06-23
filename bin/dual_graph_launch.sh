@@ -192,8 +192,9 @@ fi
 
 if [[ "$ASSISTANT" != "codex" && "$ASSISTANT" != "claude" && "$ASSISTANT" != "cursor" \
    && "$ASSISTANT" != "gemini" && "$ASSISTANT" != "opencode" && "$ASSISTANT" != "copilot" \
-   && "$ASSISTANT" != "antigravity" && "$ASSISTANT" != "openclaw" && "$ASSISTANT" != "leaderboard" ]]; then
-  echo "Usage: $0 <codex|claude|cursor|gemini|opencode|copilot|antigravity|openclaw> [project_path] [prompt]" >&2
+   && "$ASSISTANT" != "antigravity" && "$ASSISTANT" != "openclaw" \
+   && "$ASSISTANT" != "kilocode" && "$ASSISTANT" != "mimocode" && "$ASSISTANT" != "leaderboard" ]]; then
+  echo "Usage: $0 <codex|claude|cursor|gemini|opencode|copilot|antigravity|openclaw|kilocode|mimocode> [project_path] [prompt]" >&2
   echo "       $0 audit [project_path]   — vibe code health report" >&2
   exit 2
 fi
@@ -626,6 +627,14 @@ elif [[ "$ASSISTANT" == "opencode" ]]; then
   DOC_NAME="AGENTS.md"
   POLICY_MARKER="dgc-policy-v11"
 elif [[ "$ASSISTANT" == "openclaw" ]]; then
+  DOC_FILE="$PROJECT/AGENTS.md"
+  DOC_NAME="AGENTS.md"
+  POLICY_MARKER="dgc-policy-v11"
+elif [[ "$ASSISTANT" == "kilocode" ]]; then
+  DOC_FILE="$PROJECT/AGENTS.md"
+  DOC_NAME="AGENTS.md"
+  POLICY_MARKER="dgc-policy-v11"
+elif [[ "$ASSISTANT" == "mimocode" ]]; then
   DOC_FILE="$PROJECT/AGENTS.md"
   DOC_NAME="AGENTS.md"
   POLICY_MARKER="dgc-policy-v11"
@@ -2368,6 +2377,90 @@ PY
     echo "[$TOOL_LABEL] MCP config written -> ~/.openclaw/openclaw.json"
   fi
   echo "[$TOOL_LABEL] MCP URL: $_OC_URL"
+
+elif [[ "$ASSISTANT" == "kilocode" ]]; then
+  CURRENT_STEP="Registering MCP (Kilocode)"
+
+  # Auto-install kilocode CLI if missing
+  if ! command -v kilo &>/dev/null; then
+    echo "[$TOOL_LABEL] kilo not found — installing..."
+    if command -v npm &>/dev/null; then
+      npm install -g @kilocode/cli >/dev/null 2>&1 || true
+    fi
+    export PATH="$PATH:$(npm config get prefix 2>/dev/null)/bin:$HOME/.npm-global/bin:$HOME/.local/bin"
+    if ! command -v kilo &>/dev/null; then
+      echo "[$TOOL_LABEL] ERROR: could not auto-install kilocode."
+      echo "[$TOOL_LABEL]   npm install -g @kilocode/cli"
+      _send_cli_error "Registering MCP" "kilocode CLI not found, auto-install failed"
+      exit 1
+    fi
+    echo "[$TOOL_LABEL] kilocode installed."
+  fi
+
+  # Write MCP server entry into project-level kilo.jsonc
+  "$PYTHON" - "$PROJECT/kilo.jsonc" "$MCP_PORT" <<'PY'
+import json, sys, os
+config_file = sys.argv[1]
+port = sys.argv[2]
+existing = {}
+if os.path.exists(config_file):
+    try:
+        with open(config_file, "r", encoding="utf-8") as f:
+            existing = json.load(f)
+    except Exception:
+        pass
+mcp = existing.get("mcp", {})
+mcp["dual-graph"] = {"type": "remote", "url": f"http://127.0.0.1:{port}/mcp", "enabled": True}
+existing["mcp"] = mcp
+with open(config_file, "w", encoding="utf-8") as f:
+    json.dump(existing, f, indent=2)
+    f.write("\n")
+PY
+  echo "[$TOOL_LABEL] MCP config written -> $PROJECT/kilo.jsonc"
+  echo "[$TOOL_LABEL] MCP URL: http://127.0.0.1:$MCP_PORT/mcp"
+
+elif [[ "$ASSISTANT" == "mimocode" ]]; then
+  CURRENT_STEP="Registering MCP (MiMo Code)"
+
+  # Auto-install mimo CLI if missing
+  if ! command -v mimo &>/dev/null; then
+    echo "[$TOOL_LABEL] mimo not found — installing..."
+    if command -v npm &>/dev/null; then
+      npm install -g @mimo-ai/cli >/dev/null 2>&1 || true
+    fi
+    export PATH="$PATH:$(npm config get prefix 2>/dev/null)/bin:$HOME/.npm-global/bin:$HOME/.local/bin"
+    if ! command -v mimo &>/dev/null; then
+      echo "[$TOOL_LABEL] ERROR: could not auto-install mimo."
+      echo "[$TOOL_LABEL]   npm install -g @mimo-ai/cli"
+      echo "[$TOOL_LABEL]   or: curl -fsSL https://mimo.xiaomi.com/install | bash"
+      _send_cli_error "Registering MCP" "mimo CLI not found, auto-install failed"
+      exit 1
+    fi
+    echo "[$TOOL_LABEL] mimo installed."
+  fi
+
+  # Write MCP server entry into project-level .mimocode/mimocode.json
+  mkdir -p "$PROJECT/.mimocode"
+  "$PYTHON" - "$PROJECT/.mimocode/mimocode.json" "$MCP_PORT" <<'PY'
+import json, sys, os
+config_file = sys.argv[1]
+port = sys.argv[2]
+existing = {}
+if os.path.exists(config_file):
+    try:
+        with open(config_file, "r", encoding="utf-8") as f:
+            existing = json.load(f)
+    except Exception:
+        pass
+mcp = existing.get("mcpServers", {})
+mcp["dual-graph"] = {"url": f"http://127.0.0.1:{port}/mcp"}
+existing["mcpServers"] = mcp
+with open(config_file, "w", encoding="utf-8") as f:
+    json.dump(existing, f, indent=2)
+    f.write("\n")
+PY
+  echo "[$TOOL_LABEL] MCP config written -> $PROJECT/.mimocode/mimocode.json"
+  echo "[$TOOL_LABEL] MCP URL: http://127.0.0.1:$MCP_PORT/mcp"
 fi
 
 # ── First-run: show all available commands ────────────────────────────────────

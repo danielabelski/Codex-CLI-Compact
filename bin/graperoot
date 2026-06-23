@@ -143,8 +143,8 @@ _interactive_picker() {
   echo ""
 
   local tool_keys tool_labels num_tools selected
-  tool_keys=("claude" "codex" "cursor" "gemini" "opencode" "copilot" "antigravity" "openclaw")
-  tool_labels=("Claude Code" "OpenAI Codex" "Cursor" "Gemini CLI" "OpenCode" "GitHub Copilot" "Antigravity" "OpenClaw")
+  tool_keys=("claude" "codex" "cursor" "gemini" "opencode" "copilot" "antigravity" "openclaw" "kilocode" "mimocode")
+  tool_labels=("Claude Code" "OpenAI Codex" "Cursor" "Gemini CLI" "OpenCode" "GitHub Copilot" "Antigravity" "OpenClaw" "Kilocode" "MiMo Code")
   num_tools=${#tool_keys[@]}
   selected=0
 
@@ -216,7 +216,7 @@ ASSISTANT="claude"   # default (overridden by picker or flag)
 PROJECT=""
 PASSTHROUGH=()
 
-_VALID_TOOLS="claude codex cursor gemini opencode copilot antigravity openclaw"
+_VALID_TOOLS="claude codex cursor gemini opencode copilot antigravity openclaw kilocode mimocode"
 _TOOL_SET=false
 
 ARGS=("$@")
@@ -232,6 +232,8 @@ while (( i < ${#ARGS[@]} )); do
     --copilot|copilot)         ASSISTANT="copilot";     _TOOL_SET=true ;;
     --antigravity|antigravity) ASSISTANT="antigravity"; _TOOL_SET=true ;;
     --openclaw|openclaw)       ASSISTANT="openclaw";    _TOOL_SET=true ;;
+    --kilocode|kilocode)       ASSISTANT="kilocode";    _TOOL_SET=true ;;
+    --mimocode|mimocode)       ASSISTANT="mimocode";    _TOOL_SET=true ;;
     --toolname)
       PASSTHROUGH+=("$arg")
       if (( i + 1 < ${#ARGS[@]} )) && [[ "${ARGS[$((i + 1))]}" != --* ]]; then
