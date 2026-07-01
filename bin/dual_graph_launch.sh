@@ -415,7 +415,11 @@ case "$ASSISTANT" in
     echo "[$TOOL_LABEL]   2. Install OpenClaw: npm install -g openclaw@latest"
     ;;
 esac
-echo "[$TOOL_LABEL]   3. Join Discord for help: https://discord.gg/rxgVVgCh"
+echo "[$TOOL_LABEL]   3. Join Discord for help: https://discord.com/invite/YwKdQATY2d"
+echo ""
+echo "[$TOOL_LABEL] Enjoying Graperoot? Graperoot Pro is live — 7-day free trial, Claude Code only."
+echo "[$TOOL_LABEL]   https://graperoot.dev/pricing  |  feedback: support.graperoot.dev or Discord"
+echo "[$TOOL_LABEL]   (this banner goes away next update)"
 echo ""
 
 _platform_name() {
@@ -1563,18 +1567,32 @@ CURRENT_STEP="Scanning project"
 _SCAN_ERR_FILE="$DATA_DIR/scan_error.log"
 rm -f "$_SCAN_ERR_FILE" 2>/dev/null || true
 _SCAN_OK=0
-if _run_graph_builder --root "$PROJECT" --out "$DATA_DIR/info_graph.json" 2>"$_SCAN_ERR_FILE"; then
+_SCAN_TIMEOUT=120
+if command -v timeout &>/dev/null; then
+  _TIMEOUT_CMD="timeout $_SCAN_TIMEOUT"
+elif command -v gtimeout &>/dev/null; then
+  _TIMEOUT_CMD="gtimeout $_SCAN_TIMEOUT"
+else
+  _TIMEOUT_CMD=""
+fi
+if $_TIMEOUT_CMD _run_graph_builder --root "$PROJECT" --out "$DATA_DIR/info_graph.json" 2>"$_SCAN_ERR_FILE"; then
   _SCAN_OK=1
+elif [[ $? -eq 124 ]]; then
+  echo "[$TOOL_LABEL] Scan timed out after ${_SCAN_TIMEOUT}s (large repo) — continuing without full graph."
+  _SCAN_OK=2
 else
   # Auto-fix: reinstall Python deps and retry once
   echo "[$TOOL_LABEL] Scan failed — reinstalling Python deps and retrying..."
   _install_deps "$VENV" 2>/dev/null || true
   rm -f "$_SCAN_ERR_FILE" 2>/dev/null || true
-  if _run_graph_builder --root "$PROJECT" --out "$DATA_DIR/info_graph.json" 2>"$_SCAN_ERR_FILE"; then
+  if $_TIMEOUT_CMD _run_graph_builder --root "$PROJECT" --out "$DATA_DIR/info_graph.json" 2>"$_SCAN_ERR_FILE"; then
     _SCAN_OK=1
+  elif [[ $? -eq 124 ]]; then
+    echo "[$TOOL_LABEL] Scan timed out after ${_SCAN_TIMEOUT}s (large repo) — continuing without full graph."
+    _SCAN_OK=2
   fi
 fi
-if [[ "$_SCAN_OK" != "1" ]]; then
+if [[ "$_SCAN_OK" == "0" ]]; then
   echo "[$TOOL_LABEL] Error: project scan failed after retry."
   _SCAN_TAIL="$(tail -n 20 "$_SCAN_ERR_FILE" 2>/dev/null | tr '\n' ' ' | tr '\r' ' ' | sed 's/[[:space:]]\+/ /g' | cut -c1-700)"
   [[ -z "$_SCAN_TAIL" ]] && _SCAN_TAIL="no stderr captured"
@@ -1860,46 +1878,56 @@ if [[ "$ASSISTANT" == "codex" ]]; then
     echo "[$TOOL_LABEL] codex CLI installed."
   fi
 
-  # Auto-install mcp-remote globally (Codex needs stdio bridge).
-  # Always install globally so subagents can start it without npx overhead —
-  # npx startup latency causes handshake timeouts in Codex subagent mode.
+  # Auto-install mcp-remote (Codex needs stdio bridge).
   # Pin to 0.1.14 — newer versions (0.1.38+) add OAuth discovery latency
   # that causes Codex MCP handshake timeouts.
-  # Version check: use `npm list` but fall back to binary presence so that
-  # packages installed via `sudo npm install -g` (different prefix) are detected.
+  # Strategy: try global first, fall back to local install in .dual-graph/
+  # to avoid EACCES on Linux systems without sudo access.
   _mcp_need_install=0
   _mcp_bin_path="$(command -v mcp-remote 2>/dev/null || true)"
   if [[ -z "$_mcp_bin_path" ]]; then
     _mcp_need_install=1
   elif ! npm list -g mcp-remote@0.1.14 --depth=0 &>/dev/null 2>&1; then
-    # Binary exists but wrong version — check via the binary's own npm prefix too
     _mcp_prefix="$(npm prefix -g 2>/dev/null || true)"
     if ! npm list --prefix "$_mcp_prefix" mcp-remote@0.1.14 --depth=0 &>/dev/null 2>&1; then
-      _mcp_need_install=1
+      # Also check local install
+      if [[ -x "$DATA_DIR/node_modules/.bin/mcp-remote" ]]; then
+        _mcp_bin_path="$DATA_DIR/node_modules/.bin/mcp-remote"
+        _mcp_need_install=0
+      else
+        _mcp_need_install=1
+      fi
     fi
   fi
   if [[ "$_mcp_need_install" == "1" ]]; then
-    echo "[$TOOL_LABEL] Installing mcp-remote@0.1.14 (pinned — 0.1.38+ causes handshake timeouts)..."
+    echo "[$TOOL_LABEL] Installing mcp-remote@0.1.14..."
     _npm_out="$(npm install -g mcp-remote@0.1.14 2>&1)"
     _npm_exit=$?
     if [[ $_npm_exit -ne 0 ]]; then
-      if echo "$_npm_out" | grep -q "EACCES"; then
-        echo "[$TOOL_LABEL] Error: permission denied installing mcp-remote."
-        echo "[$TOOL_LABEL] Fix: run this once, then re-run dg:"
-        echo "[$TOOL_LABEL]   sudo npm install -g mcp-remote@0.1.14"
-        echo "[$TOOL_LABEL] Or fix npm global permissions: https://docs.npmjs.com/resolving-eacces-permissions-errors-when-installing-packages-globally"
-      else
+      # Global install failed (likely EACCES on Linux) — install locally
+      echo "[$TOOL_LABEL] Global install failed — installing locally in .dual-graph/..."
+      mkdir -p "$DATA_DIR"
+      _npm_out="$(cd "$DATA_DIR" && npm install mcp-remote@0.1.14 2>&1)"
+      _npm_exit=$?
+      if [[ $_npm_exit -ne 0 ]]; then
         echo "[$TOOL_LABEL] Warning: mcp-remote install failed:"
         echo "$_npm_out" | tail -5
+      else
+        _mcp_bin_path="$DATA_DIR/node_modules/.bin/mcp-remote"
       fi
-      # Don't exit — binary may already exist from a previous sudo install
     fi
     export PATH="$PATH:$(npm config get prefix 2>/dev/null)/bin"
   fi
 
   # Resolve absolute path to mcp-remote binary for stable subagent startup.
-  # Subagents inherit PATH unreliably; an absolute path bypasses that entirely.
-  _MCP_REMOTE_BIN="$(command -v mcp-remote 2>/dev/null || true)"
+  if [[ -z "$_mcp_bin_path" ]]; then
+    _mcp_bin_path="$(command -v mcp-remote 2>/dev/null || true)"
+  fi
+  # Check local install as final fallback
+  if [[ -z "$_mcp_bin_path" && -x "$DATA_DIR/node_modules/.bin/mcp-remote" ]]; then
+    _mcp_bin_path="$DATA_DIR/node_modules/.bin/mcp-remote"
+  fi
+  _MCP_REMOTE_BIN="$_mcp_bin_path"
 
   codex mcp remove dual-graph >/dev/null 2>&1 || true
   # Codex CLI only supports stdio MCP — use mcp-remote to bridge HTTP->stdio.
@@ -1944,7 +1972,7 @@ if [[ "$ASSISTANT" == "codex" ]]; then
     echo "[$TOOL_LABEL] Manual fix:"
     echo "[$TOOL_LABEL]   npm install -g @openai/codex mcp-remote"
     echo "[$TOOL_LABEL]   Then run dg again."
-    echo "[$TOOL_LABEL] If it still fails, join Discord: https://discord.gg/rxgVVgCh"
+    echo "[$TOOL_LABEL] If it still fails, join Discord: https://discord.com/invite/YwKdQATY2d"
     _send_cli_error "Registering MCP" "MCP registration failed after auto-fix (codex): $_CODEX_REG_ERR"
     exit 1
   fi
@@ -2048,7 +2076,7 @@ PY
     echo "[$TOOL_LABEL] Manual fix:"
     echo "[$TOOL_LABEL]   npm install -g @anthropic-ai/claude-code"
     echo "[$TOOL_LABEL]   Then run dgc again."
-    echo "[$TOOL_LABEL] If it still fails, join Discord: https://discord.gg/rxgVVgCh"
+    echo "[$TOOL_LABEL] If it still fails, join Discord: https://discord.com/invite/YwKdQATY2d"
     _send_cli_error "Registering MCP" "MCP registration failed after auto-fix (claude): $_MCP_REG_ERR"
     exit 1
   fi
@@ -2703,7 +2731,7 @@ if ! kill -0 "$MCP_PID" 2>/dev/null; then
   echo "[$TOOL_LABEL] ERROR: MCP server (PID $MCP_PID) died before $ASSISTANT started."
   _MCP_LOG_TAIL="$(tail -n 20 "$RUN_DIR/mcp_server.log" 2>/dev/null | tr '\n' ' ' | cut -c1-500)"
   echo "[$TOOL_LABEL] Last log: $_MCP_LOG_TAIL"
-  echo "[$TOOL_LABEL] Try running $TOOL_LABEL again. If it persists, join Discord: https://discord.gg/rxgVVgCh"
+  echo "[$TOOL_LABEL] Try running $TOOL_LABEL again. If it persists, join Discord: https://discord.com/invite/YwKdQATY2d"
   _send_cli_error "Pre-flight checks" "MCP server died before Claude started: $_MCP_LOG_TAIL"
   exit 1
 fi
@@ -2870,7 +2898,7 @@ if [[ "$ASSISTANT_EXIT" -ne 0 && "$ASSISTANT_EXIT" -ne 130 && "$ASSISTANT_EXIT" 
   esac
   echo "[$TOOL_LABEL]   2. Try running '$ASSISTANT' directly to see if it works"
   echo "[$TOOL_LABEL]   3. Run $TOOL_LABEL again — it may be a transient issue"
-  echo "[$TOOL_LABEL]   4. Join Discord for help: https://discord.gg/rxgVVgCh"
+  echo "[$TOOL_LABEL]   4. Join Discord for help: https://discord.com/invite/YwKdQATY2d"
   _send_cli_error "Running $ASSISTANT" "$ASSISTANT exited=$ASSISTANT_EXIT stderr=$_STDERR_TAIL"
 fi
 # Clean up stderr log on success

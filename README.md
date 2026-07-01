@@ -218,7 +218,7 @@ The launcher checks for updates on every run and auto-updates silently. To force
 graperoot --update
 ```
 
-Current version: **3.10.3**
+Current version: **3.10.5**
 
 ---
 

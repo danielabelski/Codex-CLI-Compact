@@ -781,7 +781,11 @@ try {
     Write-Host "[$Tool] If you receive any errors:"
     Write-Host "[$Tool]   1. Wait 5 minutes and run dgc again"
     Write-Host "[$Tool]   2. Update Claude Code: npm install -g @anthropic-ai/claude-code"
-    Write-Host "[$Tool]   3. Join Discord for help: https://discord.gg/rxgVVgCh"
+    Write-Host "[$Tool]   3. Join Discord for help: https://discord.com/invite/YwKdQATY2d"
+    Write-Host ""
+    Write-Host "[$Tool] Enjoying Graperoot? Graperoot Pro is live — 7-day free trial, Claude Code only."
+    Write-Host "[$Tool]   https://graperoot.dev/pricing  |  feedback: support.graperoot.dev or Discord"
+    Write-Host "[$Tool]   (this banner goes away next update)"
     Write-Host ""
 
     $DataDir = Join-Path $resolvedProject ".dual-graph"
@@ -1026,7 +1030,7 @@ Keep ``CONTEXT.md`` under 20 lines total. Do NOT summarize the full conversation
         Write-Host "[$Tool]    npm install -g @anthropic-ai/claude-code"
         Write-Host "[$Tool] 2. Wait 5 minutes and run dgc again."
         Write-Host "[$Tool] 3. If it still fails, open an issue on GitHub or join Discord:"
-        Write-Host "[$Tool]    https://discord.gg/rxgVVgCh"
+        Write-Host "[$Tool]    https://discord.com/invite/YwKdQATY2d"
         Send-CliError "MCP registration" "failed to register MCP in Claude after auto-fix"
         exit 1
     }

@@ -521,7 +521,11 @@ try {
     Write-Host ""
     Write-Host "[$Tool] If you receive any errors:"
     Write-Host "[$Tool]   1. Wait 5 minutes and run dg again"
-    Write-Host "[$Tool]   2. Join Discord for help: https://discord.gg/rxgVVgCh"
+    Write-Host "[$Tool]   2. Join Discord for help: https://discord.com/invite/YwKdQATY2d"
+    Write-Host ""
+    Write-Host "[$Tool] Enjoying Graperoot? Graperoot Pro is live — 7-day free trial, Claude Code only."
+    Write-Host "[$Tool]   https://graperoot.dev/pricing  |  feedback: support.graperoot.dev or Discord"
+    Write-Host "[$Tool]   (this banner goes away next update)"
     Write-Host ""
 
     $DataDir = Join-Path $resolvedProject ".dual-graph"
@@ -679,7 +683,7 @@ try {
         Write-Host "[$Tool] Manual fix:"
         Write-Host "[$Tool]   npm install -g @openai/codex mcp-remote@0.1.14"
         Write-Host "[$Tool]   Then run dg again."
-        Write-Host "[$Tool] If it still fails, join Discord: https://discord.gg/rxgVVgCh"
+        Write-Host "[$Tool] If it still fails, join Discord: https://discord.com/invite/YwKdQATY2d"
         Send-CliError "MCP registration" "failed to register MCP with codex after auto-fix"
         exit 1
     }
@@ -687,7 +691,7 @@ try {
 
     Write-Host ""
     Write-Host "[$Tool] Questions, bugs, or feedback? Join the community:"
-    Write-Host "[$Tool]    https://discord.gg/rxgVVgCh"
+    Write-Host "[$Tool]    https://discord.com/invite/YwKdQATY2d"
     Write-Host ""
     Write-Host "[$Tool] Starting Codex CLI..."
     Write-Host ""

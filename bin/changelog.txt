@@ -1,3 +1,12 @@
+3.10.5
+- Added: Graperoot Pro banner at startup (7-day free trial, graperoot.dev/pricing)
+- Fixed: Discord invite link updated to correct URL
+
+3.10.4
+- Fixed: large monorepo scan (700K+ files) no longer hangs — os.walk now skips any directory containing 500+ scannable files (data dumps, generated exports, fixture dirs) without requiring git or hardcoded dir names
+- Fixed: Codex MCP on Linux — mcp-remote now installs locally in .dual-graph/ when global npm install fails (EACCES)
+- Fixed: scan timeout safety net (120s) — continues without graph on extremely large repos instead of hanging forever
+
 3.10.3
 - Added: Kilocode support (--kilocode flag) with dual-graph MCP integration across Mac, Linux, and Windows
 - Added: MiMo Code support (--mimocode flag) with dual-graph MCP integration across Mac, Linux, and Windows
