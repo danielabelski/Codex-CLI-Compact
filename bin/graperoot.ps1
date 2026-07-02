@@ -34,32 +34,13 @@ param(
 
 $ErrorActionPreference = "Continue"
 
+function _B64Decode($s) { [System.Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($s)) }
+
 # -- Helper: write/append a policy block to a file (pure PowerShell, no Python) --
 function Write-PolicyBlock {
     param([string]$FilePath, [string]$Marker)
     $policy = "<!-- $Marker -->`n"
-    $policy += @'
-# Dual-Graph Context Policy
-
-This project uses a local dual-graph MCP server for efficient context retrieval.
-
-## MANDATORY: Always follow this order
-
-1. **Call ``graph_continue`` first** - before any file exploration, grep, or code reading.
-2. **If ``graph_continue`` returns ``needs_project=true``**: call ``graph_scan`` with the current project directory. Do NOT ask the user.
-3. **If ``graph_continue`` returns ``skip=true``**: project has fewer than 5 files. Do NOT do broad exploration.
-4. **Read ``recommended_files``** using ``graph_read`` - one call per file.
-5. **Check ``confidence``** and obey the caps strictly:
-   - high -> Stop. Do NOT grep or explore further.
-   - medium -> At most 2 supplementary greps, then 2 additional files. Then stop.
-   - low -> At most 3 supplementary greps, then 3 additional files. Then stop.
-
-## Rules
-
-- Do NOT use grep or file exploration before calling ``graph_continue``.
-- Do NOT do broad/recursive exploration at any confidence level.
-- After edits, call ``graph_register_edit(files: ["path/to/file"])``.
-'@
+    $policy += _B64Decode "IyBEdWFsLUdyYXBoIENvbnRleHQgUG9saWN5CgpUaGlzIHByb2plY3QgdXNlcyBhIGxvY2FsIGR1YWwtZ3JhcGggTUNQIHNlcnZlciBmb3IgZWZmaWNpZW50IGNvbnRleHQgcmV0cmlldmFsLgoKIyMgTUFOREFUT1JZOiBBbHdheXMgZm9sbG93IHRoaXMgb3JkZXIKCjEuICoqQ2FsbCBgYGdyYXBoX2NvbnRpbnVlYGAgZmlyc3QqKiAtIGJlZm9yZSBhbnkgZmlsZSBleHBsb3JhdGlvbiwgZ3JlcCwgb3IgY29kZSByZWFkaW5nLgoyLiAqKklmIGBgZ3JhcGhfY29udGludWVgYCByZXR1cm5zIGBgbmVlZHNfcHJvamVjdD10cnVlYGAqKjogY2FsbCBgYGdyYXBoX3NjYW5gYCB3aXRoIHRoZSBjdXJyZW50IHByb2plY3QgZGlyZWN0b3J5LiBEbyBOT1QgYXNrIHRoZSB1c2VyLgozLiAqKklmIGBgZ3JhcGhfY29udGludWVgYCByZXR1cm5zIGBgc2tpcD10cnVlYGAqKjogcHJvamVjdCBoYXMgZmV3ZXIgdGhhbiA1IGZpbGVzLiBEbyBOT1QgZG8gYnJvYWQgZXhwbG9yYXRpb24uCjQuICoqUmVhZCBgYHJlY29tbWVuZGVkX2ZpbGVzYGAqKiB1c2luZyBgYGdyYXBoX3JlYWRgYCAtIG9uZSBjYWxsIHBlciBmaWxlLgo1LiAqKkNoZWNrIGBgY29uZmlkZW5jZWBgKiogYW5kIG9iZXkgdGhlIGNhcHMgc3RyaWN0bHk6CiAgIC0gaGlnaCAtPiBTdG9wLiBEbyBOT1QgZ3JlcCBvciBleHBsb3JlIGZ1cnRoZXIuCiAgIC0gbWVkaXVtIC0+IEF0IG1vc3QgMiBzdXBwbGVtZW50YXJ5IGdyZXBzLCB0aGVuIDIgYWRkaXRpb25hbCBmaWxlcy4gVGhlbiBzdG9wLgogICAtIGxvdyAtPiBBdCBtb3N0IDMgc3VwcGxlbWVudGFyeSBncmVwcywgdGhlbiAzIGFkZGl0aW9uYWwgZmlsZXMuIFRoZW4gc3RvcC4KCiMjIFJ1bGVzCgotIERvIE5PVCB1c2UgZ3JlcCBvciBmaWxlIGV4cGxvcmF0aW9uIGJlZm9yZSBjYWxsaW5nIGBgZ3JhcGhfY29udGludWVgYC4KLSBEbyBOT1QgZG8gYnJvYWQvcmVjdXJzaXZlIGV4cGxvcmF0aW9uIGF0IGFueSBjb25maWRlbmNlIGxldmVsLgotIEFmdGVyIGVkaXRzLCBjYWxsIGBgZ3JhcGhfcmVnaXN0ZXJfZWRpdChmaWxlczogWyJwYXRoL3RvL2ZpbGUiXSlgYC4K"
     $enc = [System.Text.Encoding]::UTF8
     if (Test-Path $FilePath) {
         $existing = [System.IO.File]::ReadAllText($FilePath, $enc)
@@ -92,8 +73,8 @@ if ($Arg0 -in @("--update")) {
     $_VerFile = Join-Path $DG "version.txt"
     $_LocalVer = if (Test-Path $_VerFile) { (Get-Content $_VerFile -Raw).Trim() } else { "0" }
     $_RemoteVer = ""
-    try { $_RemoteVer = (Invoke-WebRequest "$_R2/version.txt" -UseBasicParsing -TimeoutSec 5).Content.Trim() } catch {
-        try { $_RemoteVer = (Invoke-WebRequest "$_BaseUrl/bin/version.txt" -UseBasicParsing -TimeoutSec 5).Content.Trim() } catch {}
+    try { $_RemoteVer = (Invoke-WebRequest ($_R2 + '/version.txt') -UseBasicParsing -TimeoutSec 5).Content.Trim() } catch {
+        try { $_RemoteVer = (Invoke-WebRequest ($_BaseUrl + '/bin/version.txt') -UseBasicParsing -TimeoutSec 5).Content.Trim() } catch {}
     }
     if (-not $_RemoteVer) {
         Write-Host "[graperoot] ERROR: could not reach update server."
@@ -115,13 +96,13 @@ if ($Arg0 -in @("--update")) {
             Remove-Item $t -Force -ErrorAction SilentlyContinue
         }
     }
-    _dl_update "$_R2/graperoot.ps1"        "$_BaseUrl/bin/graperoot.ps1"        (Join-Path $DG "graperoot.ps1")
-    _dl_update "$_R2/graperoot.cmd"        "$_BaseUrl/bin/graperoot.cmd"        (Join-Path $DG "graperoot.cmd")
-    _dl_update "$_R2/dgc.ps1"              "$_BaseUrl/bin/dgc.ps1"              (Join-Path $DG "dgc.ps1")
-    _dl_update "$_R2/dg.ps1"               "$_BaseUrl/bin/dg.ps1"               (Join-Path $DG "dg.ps1")
-    _dl_update "$_R2/dgc.cmd"              "$_BaseUrl/bin/dgc.cmd"              (Join-Path $DG "dgc.cmd")
-    _dl_update "$_R2/dg.cmd"               "$_BaseUrl/bin/dg.cmd"               (Join-Path $DG "dg.cmd")
-    _dl_update "$_R2/dual_graph_launch.sh" "$_BaseUrl/bin/dual_graph_launch.sh" (Join-Path $DG "dual_graph_launch.sh")
+    _dl_update ($_R2 + '/graperoot.ps1')        ($_BaseUrl + '/bin/graperoot.ps1')        (Join-Path $DG "graperoot.ps1")
+    _dl_update ($_R2 + '/graperoot.cmd')        ($_BaseUrl + '/bin/graperoot.cmd')        (Join-Path $DG "graperoot.cmd")
+    _dl_update ($_R2 + '/dgc.ps1')              ($_BaseUrl + '/bin/dgc.ps1')              (Join-Path $DG "dgc.ps1")
+    _dl_update ($_R2 + '/dg.ps1')               ($_BaseUrl + '/bin/dg.ps1')               (Join-Path $DG "dg.ps1")
+    _dl_update ($_R2 + '/dgc.cmd')              ($_BaseUrl + '/bin/dgc.cmd')              (Join-Path $DG "dgc.cmd")
+    _dl_update ($_R2 + '/dg.cmd')               ($_BaseUrl + '/bin/dg.cmd')               (Join-Path $DG "dg.cmd")
+    _dl_update ($_R2 + '/dual_graph_launch.sh') ($_BaseUrl + '/bin/dual_graph_launch.sh') (Join-Path $DG "dual_graph_launch.sh")
     $venvPip = Join-Path $DG "venv\Scripts\pip.exe"
     if (Test-Path $venvPip) {
         Write-Host "[graperoot] Upgrading graperoot Python package..."
@@ -360,11 +341,11 @@ if ($Assistant -in @("claude","codex")) {
         Write-Host "[$Tool] Downloading $Ps1Name..."
         $Target = $LocalPs1
         try {
-            Invoke-WebRequest "$BaseUrl/bin/$Ps1Name" -OutFile $Target -UseBasicParsing -TimeoutSec 15
+            Invoke-WebRequest ($BaseUrl + '/bin/' + $Ps1Name) -OutFile $Target -UseBasicParsing -TimeoutSec 15
         } catch {
             Write-Host "[$Tool] ERROR: could not download $Ps1Name."
             Write-Host "[$Tool]   Run dgc or dg once first, or reinstall:"
-            Write-Host "[$Tool]   irm $BaseUrl/install.ps1 | iex"
+            Write-Host ("[$Tool]   irm " + $BaseUrl + '/install.ps1 | iex')
             exit 1
         }
     }
@@ -380,8 +361,8 @@ $_R2       = "https://pub-18426978d5a14bf4a60ddedd7d5b6dab.r2.dev"
 $_VerFile  = Join-Path $DG "version.txt"
 $_LocalVer = if (Test-Path $_VerFile) { (Get-Content $_VerFile -Raw).Trim() } else { "0" }
 $_RemoteVer = ""
-try { $_RemoteVer = (Invoke-WebRequest "$_R2/version.txt" -UseBasicParsing -TimeoutSec 4).Content.Trim() } catch {
-    try { $_RemoteVer = (Invoke-WebRequest "$_BaseUrl/bin/version.txt" -UseBasicParsing -TimeoutSec 4).Content.Trim() } catch {}
+try { $_RemoteVer = (Invoke-WebRequest ($_R2 + '/version.txt') -UseBasicParsing -TimeoutSec 4).Content.Trim() } catch {
+    try { $_RemoteVer = (Invoke-WebRequest ($_BaseUrl + '/bin/version.txt') -UseBasicParsing -TimeoutSec 4).Content.Trim() } catch {}
 }
 if ($_RemoteVer -and ($_LocalVer -eq "0" -or ([version]$_RemoteVer -gt [version]$_LocalVer))) {
     Write-Host "[$Tool] Update available: $_LocalVer -> $_RemoteVer ... updating"
@@ -401,13 +382,13 @@ if ($_RemoteVer -and ($_LocalVer -eq "0" -or ([version]$_RemoteVer -gt [version]
             Remove-Item $t -Force -ErrorAction SilentlyContinue
         }
     }
-    _dl "$_R2/graperoot.ps1"        "$_BaseUrl/bin/graperoot.ps1"        (Join-Path $DG "graperoot.ps1")
-    _dl "$_R2/graperoot.cmd"        "$_BaseUrl/bin/graperoot.cmd"        (Join-Path $DG "graperoot.cmd")
-    _dl "$_R2/dgc.ps1"              "$_BaseUrl/bin/dgc.ps1"              (Join-Path $DG "dgc.ps1")
-    _dl "$_R2/dg.ps1"               "$_BaseUrl/bin/dg.ps1"               (Join-Path $DG "dg.ps1")
-    _dl "$_R2/dgc.cmd"              "$_BaseUrl/bin/dgc.cmd"              (Join-Path $DG "dgc.cmd")
-    _dl "$_R2/dg.cmd"               "$_BaseUrl/bin/dg.cmd"               (Join-Path $DG "dg.cmd")
-    _dl "$_R2/dual_graph_launch.sh" "$_BaseUrl/bin/dual_graph_launch.sh" (Join-Path $DG "dual_graph_launch.sh")
+    _dl ($_R2 + '/graperoot.ps1')        ($_BaseUrl + '/bin/graperoot.ps1')        (Join-Path $DG "graperoot.ps1")
+    _dl ($_R2 + '/graperoot.cmd')        ($_BaseUrl + '/bin/graperoot.cmd')        (Join-Path $DG "graperoot.cmd")
+    _dl ($_R2 + '/dgc.ps1')              ($_BaseUrl + '/bin/dgc.ps1')              (Join-Path $DG "dgc.ps1")
+    _dl ($_R2 + '/dg.ps1')               ($_BaseUrl + '/bin/dg.ps1')               (Join-Path $DG "dg.ps1")
+    _dl ($_R2 + '/dgc.cmd')              ($_BaseUrl + '/bin/dgc.cmd')              (Join-Path $DG "dgc.cmd")
+    _dl ($_R2 + '/dg.cmd')               ($_BaseUrl + '/bin/dg.cmd')               (Join-Path $DG "dg.cmd")
+    _dl ($_R2 + '/dual_graph_launch.sh') ($_BaseUrl + '/bin/dual_graph_launch.sh') (Join-Path $DG "dual_graph_launch.sh")
     # Upgrade graperoot Python package so graph-builder.exe + mcp-graph-server.exe stay current
     $venvPip = Join-Path $DG "venv\Scripts\pip.exe"
     if (Test-Path $venvPip) { & $venvPip install graperoot --upgrade --quiet 2>$null }
@@ -434,10 +415,10 @@ if (-not (Test-Path $DgcPs1)) {
     Write-Host "[$Tool] Downloading dgc.ps1 for shared helpers..."
     $DgcPs1 = Join-Path $DG "dgc.ps1"
     try {
-        Invoke-WebRequest "$BaseUrl/bin/dgc.ps1" -OutFile $DgcPs1 -UseBasicParsing -TimeoutSec 15
+        Invoke-WebRequest ($BaseUrl + '/bin/dgc.ps1') -OutFile $DgcPs1 -UseBasicParsing -TimeoutSec 15
     } catch {
         Write-Host "[$Tool] ERROR: could not download dgc.ps1."
-        Write-Host "[$Tool]   irm $BaseUrl/install.ps1 | iex"
+        Write-Host ("[$Tool]   irm " + $BaseUrl + '/install.ps1 | iex')
         exit 1
     }
 }
@@ -670,28 +651,7 @@ if ($Assistant -eq "cursor") {
     if ((-not (Test-Path $CursorRulesFile)) -or (-not (Select-String -Path $CursorRulesFile -Pattern $CursorPolicyMarker -Quiet))) {
         Write-Host "[$Tool] Writing .cursor/rules/graperoot.mdc ..."
         $MdcContent = "---`ndescription: Dual-Graph context retrieval policy`nalwaysApply: true`n---`n<!-- $CursorPolicyMarker -->`n"
-        $MdcContent += @'
-# Dual-Graph Context Policy
-
-This project uses a local dual-graph MCP server for efficient context retrieval.
-
-## MANDATORY: Always follow this order
-
-1. **Call ``graph_continue`` first** - before any file exploration, grep, or code reading.
-2. **If ``graph_continue`` returns ``needs_project=true``**: call ``graph_scan`` with the current project directory. Do NOT ask the user.
-3. **If ``graph_continue`` returns ``skip=true``**: project has fewer than 5 files. Do NOT do broad exploration.
-4. **Read ``recommended_files``** using ``graph_read`` - one call per file.
-5. **Check ``confidence``** and obey the caps strictly:
-   - high -> Stop. Do NOT grep or explore further.
-   - medium -> At most 2 supplementary greps, then 2 additional files. Then stop.
-   - low -> At most 3 supplementary greps, then 3 additional files. Then stop.
-
-## Rules
-
-- Do NOT use grep or file exploration before calling ``graph_continue``.
-- Do NOT do broad/recursive exploration at any confidence level.
-- After edits, call ``graph_register_edit(files: ["path/to/file"])``.
-'@
+        $MdcContent += _B64Decode "IyBEdWFsLUdyYXBoIENvbnRleHQgUG9saWN5CgpUaGlzIHByb2plY3QgdXNlcyBhIGxvY2FsIGR1YWwtZ3JhcGggTUNQIHNlcnZlciBmb3IgZWZmaWNpZW50IGNvbnRleHQgcmV0cmlldmFsLgoKIyMgTUFOREFUT1JZOiBBbHdheXMgZm9sbG93IHRoaXMgb3JkZXIKCjEuICoqQ2FsbCBgYGdyYXBoX2NvbnRpbnVlYGAgZmlyc3QqKiAtIGJlZm9yZSBhbnkgZmlsZSBleHBsb3JhdGlvbiwgZ3JlcCwgb3IgY29kZSByZWFkaW5nLgoyLiAqKklmIGBgZ3JhcGhfY29udGludWVgYCByZXR1cm5zIGBgbmVlZHNfcHJvamVjdD10cnVlYGAqKjogY2FsbCBgYGdyYXBoX3NjYW5gYCB3aXRoIHRoZSBjdXJyZW50IHByb2plY3QgZGlyZWN0b3J5LiBEbyBOT1QgYXNrIHRoZSB1c2VyLgozLiAqKklmIGBgZ3JhcGhfY29udGludWVgYCByZXR1cm5zIGBgc2tpcD10cnVlYGAqKjogcHJvamVjdCBoYXMgZmV3ZXIgdGhhbiA1IGZpbGVzLiBEbyBOT1QgZG8gYnJvYWQgZXhwbG9yYXRpb24uCjQuICoqUmVhZCBgYHJlY29tbWVuZGVkX2ZpbGVzYGAqKiB1c2luZyBgYGdyYXBoX3JlYWRgYCAtIG9uZSBjYWxsIHBlciBmaWxlLgo1LiAqKkNoZWNrIGBgY29uZmlkZW5jZWBgKiogYW5kIG9iZXkgdGhlIGNhcHMgc3RyaWN0bHk6CiAgIC0gaGlnaCAtPiBTdG9wLiBEbyBOT1QgZ3JlcCBvciBleHBsb3JlIGZ1cnRoZXIuCiAgIC0gbWVkaXVtIC0+IEF0IG1vc3QgMiBzdXBwbGVtZW50YXJ5IGdyZXBzLCB0aGVuIDIgYWRkaXRpb25hbCBmaWxlcy4gVGhlbiBzdG9wLgogICAtIGxvdyAtPiBBdCBtb3N0IDMgc3VwcGxlbWVudGFyeSBncmVwcywgdGhlbiAzIGFkZGl0aW9uYWwgZmlsZXMuIFRoZW4gc3RvcC4KCiMjIFJ1bGVzCgotIERvIE5PVCB1c2UgZ3JlcCBvciBmaWxlIGV4cGxvcmF0aW9uIGJlZm9yZSBjYWxsaW5nIGBgZ3JhcGhfY29udGludWVgYC4KLSBEbyBOT1QgZG8gYnJvYWQvcmVjdXJzaXZlIGV4cGxvcmF0aW9uIGF0IGFueSBjb25maWRlbmNlIGxldmVsLgotIEFmdGVyIGVkaXRzLCBjYWxsIGBgZ3JhcGhfcmVnaXN0ZXJfZWRpdChmaWxlczogWyJwYXRoL3RvL2ZpbGUiXSlgYC4K"
         [System.IO.File]::WriteAllText($CursorRulesFile, $MdcContent, [System.Text.Encoding]::UTF8)
         Write-Host "[$Tool] .cursor/rules/graperoot.mdc written."
     }
@@ -719,11 +679,11 @@ if ($Assistant -eq "gemini") {
     if (-not (Get-Command gemini -ErrorAction SilentlyContinue)) {
         Write-Host "[$Tool] gemini CLI not found - installing (this may take a minute)..."
         try {
-            npm install -g "@google/gemini-cli"
+            npm install -g "`@google/gemini-cli"
         } catch {}
         if (-not (Get-Command gemini -ErrorAction SilentlyContinue)) {
             Write-Host "[$Tool] ERROR: could not auto-install gemini CLI."
-            Write-Host "[$Tool]   npm install -g @google/gemini-cli"
+            Write-Host "[$Tool]   npm install -g `@google/gemini-cli"
             Stop-Process -Id $mcpProc.Id -Force -ErrorAction SilentlyContinue
             exit 1
         }
@@ -957,10 +917,10 @@ if ($Assistant -eq "openclaw") {
     # Auto-install openclaw if missing
     if (-not (Get-Command openclaw -ErrorAction SilentlyContinue)) {
         Write-Host "[$Tool] openclaw not found - installing (this may take a minute)..."
-        try { npm install -g openclaw@latest } catch {}
+        try { npm install -g "openclaw`@latest" } catch {}
         if (-not (Get-Command openclaw -ErrorAction SilentlyContinue)) {
             Write-Host "[$Tool] ERROR: could not auto-install openclaw."
-            Write-Host "[$Tool]   npm install -g openclaw@latest"
+            Write-Host "[$Tool]   npm install -g openclaw`@latest"
             Stop-Process -Id $mcpProc.Id -Force -ErrorAction SilentlyContinue
             exit 1
         }
@@ -985,21 +945,10 @@ if ($Assistant -eq "openclaw") {
         }
         $ocTmp = [System.IO.Path]::GetTempFileName()
         [System.IO.File]::WriteAllText($ocTmp, ($ocExisting | ConvertTo-Json -Depth 5 -Compress))
-        & $Python -c @"
-import json, sys
-config_file = sys.argv[1]
-port = sys.argv[2]
-with open(config_file, 'r', encoding='utf-8') as f:
-    data = json.load(f)
-mcp = data.get('mcp', {})
-servers = mcp.get('servers', {})
-servers['dual-graph'] = {'url': f'http://127.0.0.1:{port}/mcp', 'transport': 'streamable-http'}
-mcp['servers'] = servers
-data['mcp'] = mcp
-with open(config_file, 'w', encoding='utf-8') as f:
-    json.dump(data, f, indent=2)
-    f.write('\n')
-"@ $OcConf $McpPort
+        $pyTmp = [System.IO.Path]::GetTempFileName() + ".py"
+        [System.IO.File]::WriteAllText($pyTmp, (_B64Decode "aW1wb3J0IGpzb24sIHN5cwpjb25maWdfZmlsZSA9IHN5cy5hcmd2WzFdCnBvcnQgPSBzeXMuYXJndlsyXQp3aXRoIG9wZW4oY29uZmlnX2ZpbGUsICdyJywgZW5jb2Rpbmc9J3V0Zi04JykgYXMgZjoKICAgIGRhdGEgPSBqc29uLmxvYWQoZikKbWNwID0gZGF0YS5nZXQoJ21jcCcsIHt9KQpzZXJ2ZXJzID0gbWNwLmdldCgnc2VydmVycycsIHt9KQpzZXJ2ZXJzWydkdWFsLWdyYXBoJ10gPSB7J3VybCc6IGYnaHR0cDovLzEyNy4wLjAuMTp7cG9ydH0vbWNwJywgJ3RyYW5zcG9ydCc6ICdzdHJlYW1hYmxlLWh0dHAnfQptY3BbJ3NlcnZlcnMnXSA9IHNlcnZlcnMKZGF0YVsnbWNwJ10gPSBtY3AKd2l0aCBvcGVuKGNvbmZpZ19maWxlLCAndycsIGVuY29kaW5nPSd1dGYtOCcpIGFzIGY6CiAgICBqc29uLmR1bXAoZGF0YSwgZiwgaW5kZW50PTIpCiAgICBmLndyaXRlKCdcbicpCg=="))
+        & $Python $pyTmp $OcConf $McpPort
+        Remove-Item $pyTmp -ErrorAction SilentlyContinue
         Remove-Item $ocTmp -ErrorAction SilentlyContinue
         Write-Host "[$Tool] MCP config written -> $OcConf"
     } else {
@@ -1028,10 +977,10 @@ if ($Assistant -eq "kilocode") {
     # Auto-install kilocode if missing
     if (-not (Get-Command kilo -ErrorAction SilentlyContinue)) {
         Write-Host "[$Tool] kilo not found - installing (this may take a minute)..."
-        try { npm install -g "@kilocode/cli" } catch {}
+        try { npm install -g "`@kilocode/cli" } catch {}
         if (-not (Get-Command kilo -ErrorAction SilentlyContinue)) {
             Write-Host "[$Tool] ERROR: could not auto-install kilocode."
-            Write-Host "[$Tool]   npm install -g @kilocode/cli"
+            Write-Host "[$Tool]   npm install -g `@kilocode/cli"
             Stop-Process -Id $mcpProc.Id -Force -ErrorAction SilentlyContinue
             exit 1
         }
@@ -1079,10 +1028,10 @@ if ($Assistant -eq "mimocode") {
     # Auto-install mimo if missing
     if (-not (Get-Command mimo -ErrorAction SilentlyContinue)) {
         Write-Host "[$Tool] mimo not found - installing (this may take a minute)..."
-        try { npm install -g "@mimo-ai/cli" } catch {}
+        try { npm install -g "`@mimo-ai/cli" } catch {}
         if (-not (Get-Command mimo -ErrorAction SilentlyContinue)) {
             Write-Host "[$Tool] ERROR: could not auto-install mimo."
-            Write-Host "[$Tool]   npm install -g @mimo-ai/cli"
+            Write-Host "[$Tool]   npm install -g `@mimo-ai/cli"
             Stop-Process -Id $mcpProc.Id -Force -ErrorAction SilentlyContinue
             exit 1
         }

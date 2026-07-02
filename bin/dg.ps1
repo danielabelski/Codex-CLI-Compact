@@ -304,8 +304,8 @@ try {
     $versionFile = Join-Path $DG "version.txt"
     if (Test-Path $versionFile) { $localVer = (Get-Content $versionFile -Raw).Trim() }
     $remoteVer = ""
-    try { $remoteVer = Get-Text "$BaseUrl/bin/version.txt" } catch {
-        try { $remoteVer = Get-Text "$R2/version.txt" } catch {}
+    try { $remoteVer = Get-Text ($BaseUrl + '/bin/version.txt') } catch {
+        try { $remoteVer = Get-Text ($R2 + '/version.txt') } catch {}
     }
     if ($remoteVer) {
         try {
@@ -316,18 +316,18 @@ try {
                 }
                 Write-Host "[$Tool] Update available: $localVer -> $remoteVer ... updating"
                 $downloads = @(
-                    @{ Primary = "$R2/dual_graph_launch.sh"; Fallback = "$BaseUrl/bin/dual_graph_launch.sh"; Out = (Join-Path $DG "dual_graph_launch.sh") },
-                    @{ Primary = "$R2/dgc.ps1";             Fallback = "$BaseUrl/bin/dgc.ps1";            Out = (Join-Path $DG "dgc.ps1") },
-                    @{ Primary = "$R2/dg.ps1";              Fallback = "$BaseUrl/bin/dg.ps1";             Out = (Join-Path $DG "dg.ps1") },
-                    @{ Primary = "$R2/dgc.cmd";             Fallback = "$BaseUrl/bin/dgc.cmd";            Out = (Join-Path $DG "dgc.cmd") },
-                    @{ Primary = "$R2/dg.cmd";              Fallback = "$BaseUrl/bin/dg.cmd";             Out = (Join-Path $DG "dg.cmd") },
-                    @{ Primary = "$R2/graperoot.ps1";       Fallback = "$BaseUrl/bin/graperoot.ps1";      Out = (Join-Path $DG "graperoot.ps1") },
-                    @{ Primary = "$R2/graperoot.cmd";       Fallback = "$BaseUrl/bin/graperoot.cmd";      Out = (Join-Path $DG "graperoot.cmd") }
+                    @{ Primary = ($R2 + '/dual_graph_launch.sh'); Fallback = ($BaseUrl + '/bin/dual_graph_launch.sh'); Out = (Join-Path $DG "dual_graph_launch.sh") },
+                    @{ Primary = ($R2 + '/dgc.ps1');             Fallback = ($BaseUrl + '/bin/dgc.ps1');            Out = (Join-Path $DG "dgc.ps1") },
+                    @{ Primary = ($R2 + '/dg.ps1');              Fallback = ($BaseUrl + '/bin/dg.ps1');             Out = (Join-Path $DG "dg.ps1") },
+                    @{ Primary = ($R2 + '/dgc.cmd');             Fallback = ($BaseUrl + '/bin/dgc.cmd');            Out = (Join-Path $DG "dgc.cmd") },
+                    @{ Primary = ($R2 + '/dg.cmd');              Fallback = ($BaseUrl + '/bin/dg.cmd');             Out = (Join-Path $DG "dg.cmd") },
+                    @{ Primary = ($R2 + '/graperoot.ps1');       Fallback = ($BaseUrl + '/bin/graperoot.ps1');      Out = (Join-Path $DG "graperoot.ps1") },
+                    @{ Primary = ($R2 + '/graperoot.cmd');       Fallback = ($BaseUrl + '/bin/graperoot.cmd');      Out = (Join-Path $DG "graperoot.cmd") }
                 )
                 foreach ($item in $downloads) { [void](Download-File $item.Primary $item.Fallback $item.Out) }
                 $dgPs1 = Join-Path $DG "dg.ps1"
                 if ((Test-Path $dgPs1) -and (Get-Item $dgPs1).Length -gt 1024) {
-                    [void](Download-File "$R2/version.txt" "$BaseUrl/bin/version.txt" (Join-Path $DG "version.txt"))
+                    [void](Download-File ($R2 + '/version.txt') ($BaseUrl + '/bin/version.txt') (Join-Path $DG "version.txt"))
                 }
                 # Upgrade graperoot so venv gets latest mcp_graph_server + compiled modules
                 $venvPip = Join-Path $DG "venv\Scripts\pip.exe"
@@ -335,8 +335,8 @@ try {
                 # Show changelog for new version (max 3 lines)
                 try {
                     $changelog = ""
-                    try { $changelog = (Invoke-WebRequest -Uri "$BaseUrl/bin/changelog.txt" -TimeoutSec 5 -UseBasicParsing).Content } catch {
-                        try { $changelog = (Invoke-WebRequest -Uri "$R2/changelog.txt" -TimeoutSec 5 -UseBasicParsing).Content } catch {}
+                    try { $changelog = (Invoke-WebRequest -Uri ($BaseUrl + '/bin/changelog.txt') -TimeoutSec 5 -UseBasicParsing).Content } catch {
+                        try { $changelog = (Invoke-WebRequest -Uri ($R2 + '/changelog.txt') -TimeoutSec 5 -UseBasicParsing).Content } catch {}
                     }
                     if ($changelog) {
                         $notes = @(); $inVer = $false
@@ -616,12 +616,12 @@ try {
     # Auto-install codex CLI if missing
     if (-not (Get-Command codex -ErrorAction SilentlyContinue)) {
         Write-Host "[$Tool] codex CLI not found -- installing..."
-        Invoke-NativeQuiet "npm" @("install", "-g", "@openai/codex") | Out-Null
+        Invoke-NativeQuiet "npm" @("install", "-g", "`@openai/codex") | Out-Null
         $env:PATH = "$env:PATH;$(npm config get prefix 2>$null)\node_modules\.bin"
         if (-not (Get-Command codex -ErrorAction SilentlyContinue)) {
             Stop-McpServer $pidFile $portFile
             Write-Host "[$Tool] ERROR: could not auto-install codex CLI."
-            Write-Host "[$Tool]   npm install -g @openai/codex"
+            Write-Host "[$Tool]   npm install -g `@openai/codex"
             Send-CliError "Codex install" "could not auto-install codex CLI"
             exit 1
         }
@@ -662,32 +662,34 @@ try {
     }
 
     Invoke-NativeQuiet "codex" @("mcp", "remove", "dual-graph") | Out-Null
-    $mcpAddExit = Invoke-NativeQuiet "codex" @("mcp", "add", "dual-graph", "--", $npxCmd, "mcp-remote", "http://127.0.0.1:$port/mcp", "--allow-http")
+    $mcpUrl = 'http://127.0.0.1:' + $port + '/mcp'
+    $mcpAddExit = Invoke-NativeQuiet "codex" @("mcp", "add", "dual-graph", "--", $npxCmd, "mcp-remote", $mcpUrl, "--allow-http")
     # Fallback: try global mcp-remote
     if ($mcpAddExit -ne 0) {
         $mcpRemoteCmd = (Get-Command mcp-remote -ErrorAction SilentlyContinue).Source
         if ($mcpRemoteCmd) {
-            $mcpAddExit = Invoke-NativeQuiet "codex" @("mcp", "add", "dual-graph", "--", $mcpRemoteCmd, "http://127.0.0.1:$port/mcp", "--allow-http")
+            $mcpAddExit = Invoke-NativeQuiet "codex" @("mcp", "add", "dual-graph", "--", $mcpRemoteCmd, $mcpUrl, "--allow-http")
         }
     }
     # Auto-fix: reinstall deps and retry
     if ($mcpAddExit -ne 0) {
         Write-Host "[$Tool] MCP registration failed -- reinstalling deps and retrying..."
-        Invoke-NativeQuiet "npm" @("install", "-g", "@openai/codex", "mcp-remote@0.1.14") | Out-Null
+        Invoke-NativeQuiet "npm" @("install", "-g", "`@openai/codex", "mcp-remote`@0.1.14") | Out-Null
         Invoke-NativeQuiet "codex" @("mcp", "remove", "dual-graph") | Out-Null
-        $mcpAddExit = Invoke-NativeQuiet "codex" @("mcp", "add", "dual-graph", "--", $npxCmd, "mcp-remote", "http://127.0.0.1:$port/mcp", "--allow-http")
+        $mcpUrl = 'http://127.0.0.1:' + $port + '/mcp'
+        $mcpAddExit = Invoke-NativeQuiet "codex" @("mcp", "add", "dual-graph", "--", $npxCmd, "mcp-remote", $mcpUrl, "--allow-http")
     }
     if ($mcpAddExit -ne 0) {
         Stop-McpServer $pidFile $portFile
         Write-Host "[$Tool] Error: failed to register MCP with codex after auto-fix."
         Write-Host "[$Tool] Manual fix:"
-        Write-Host "[$Tool]   npm install -g @openai/codex mcp-remote@0.1.14"
+        Write-Host "[$Tool]   npm install -g `@openai/codex mcp-remote`@0.1.14"
         Write-Host "[$Tool]   Then run dg again."
         Write-Host "[$Tool] If it still fails, join Discord: https://discord.com/invite/YwKdQATY2d"
         Send-CliError "MCP registration" "failed to register MCP with codex after auto-fix"
         exit 1
     }
-    Write-Host "[$Tool] MCP registered -> http://127.0.0.1:$port/mcp (via mcp-remote)"
+    Write-Host ("[$Tool] MCP registered -> http://127.0.0.1:" + $port + "/mcp (via mcp-remote)")
 
     Write-Host ""
     Write-Host "[$Tool] Questions, bugs, or feedback? Join the community:"

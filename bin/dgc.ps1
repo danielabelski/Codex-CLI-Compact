@@ -3,6 +3,8 @@
 
 $ErrorActionPreference = "Stop"
 
+function _B64Decode($s) { [System.Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($s)) }
+
 # Claude CLI flags  - three categories:
 # 1. Single-value: always consume exactly the next argument
 $_singleFlags = @('--agent','--agents','--append-system-prompt','--debug-file','--effort',
@@ -225,7 +227,7 @@ function Send-CliError([string]$Step, [string]$ErrorMessage) {
             tool = $Tool
             toolname = $RuntimeToolName
         } | ConvertTo-Json -Compress
-        Invoke-WebRequest -Uri $WebhookUrl -Method Post -Body $body -ContentType "application/json" -UseBasicParsing -TimeoutSec 3 | Out-Null
+        Invoke-WebRequest -Uri $WebhookUrl -Method Post -Body $body -ContentType 'application/json' -UseBasicParsing -TimeoutSec 3 | Out-Null
     } catch {}
 }
 
@@ -500,7 +502,7 @@ try {
         Where-Object { $_.Name -match '^venv\.(_old_|_broken_)' } |
         ForEach-Object {
             $stale = $_.FullName
-            Start-Job -ScriptBlock { cmd /c "rmdir /s /q `"$using:stale`"" } -ErrorAction SilentlyContinue | Out-Null
+            Start-Job -ScriptBlock { param($p); cmd /c "rmdir /s /q `"$p`"" } -ArgumentList $stale -ErrorAction SilentlyContinue | Out-Null
         }
 
     # -- Self-update check (FIRST -- before venv/graperoot so stuck users always escape) --
@@ -508,8 +510,8 @@ try {
     $versionFile = Join-Path $DG "version.txt"
     if (Test-Path $versionFile) { $localVer = (Get-Content $versionFile -Raw).Trim() }
     $remoteVer = ""
-    try { $remoteVer = Get-Text "$BaseUrl/bin/version.txt" } catch {
-        try { $remoteVer = Get-Text "$R2/version.txt" } catch {}
+    try { $remoteVer = Get-Text ($BaseUrl + '/bin/version.txt') } catch {
+        try { $remoteVer = Get-Text ($R2 + '/version.txt') } catch {}
     }
     if ($remoteVer) {
         try {
@@ -520,18 +522,18 @@ try {
                 }
                 Write-Host "[$Tool] Update available: $localVer -> $remoteVer ... updating"
                 $downloads = @(
-                    @{ Primary = "$R2/dual_graph_launch.sh"; Fallback = "$BaseUrl/bin/dual_graph_launch.sh"; Out = (Join-Path $DG "dual_graph_launch.sh") },
-                    @{ Primary = "$R2/dgc.ps1";             Fallback = "$BaseUrl/bin/dgc.ps1";            Out = (Join-Path $DG "dgc.ps1") },
-                    @{ Primary = "$R2/dg.ps1";              Fallback = "$BaseUrl/bin/dg.ps1";             Out = (Join-Path $DG "dg.ps1") },
-                    @{ Primary = "$R2/dgc.cmd";             Fallback = "$BaseUrl/bin/dgc.cmd";            Out = (Join-Path $DG "dgc.cmd") },
-                    @{ Primary = "$R2/dg.cmd";              Fallback = "$BaseUrl/bin/dg.cmd";             Out = (Join-Path $DG "dg.cmd") },
-                    @{ Primary = "$R2/graperoot.ps1";       Fallback = "$BaseUrl/bin/graperoot.ps1";      Out = (Join-Path $DG "graperoot.ps1") },
-                    @{ Primary = "$R2/graperoot.cmd";       Fallback = "$BaseUrl/bin/graperoot.cmd";      Out = (Join-Path $DG "graperoot.cmd") }
+                    @{ Primary = ($R2 + '/dual_graph_launch.sh'); Fallback = ($BaseUrl + '/bin/dual_graph_launch.sh'); Out = (Join-Path $DG "dual_graph_launch.sh") },
+                    @{ Primary = ($R2 + '/dgc.ps1');             Fallback = ($BaseUrl + '/bin/dgc.ps1');            Out = (Join-Path $DG "dgc.ps1") },
+                    @{ Primary = ($R2 + '/dg.ps1');              Fallback = ($BaseUrl + '/bin/dg.ps1');             Out = (Join-Path $DG "dg.ps1") },
+                    @{ Primary = ($R2 + '/dgc.cmd');             Fallback = ($BaseUrl + '/bin/dgc.cmd');            Out = (Join-Path $DG "dgc.cmd") },
+                    @{ Primary = ($R2 + '/dg.cmd');              Fallback = ($BaseUrl + '/bin/dg.cmd');             Out = (Join-Path $DG "dg.cmd") },
+                    @{ Primary = ($R2 + '/graperoot.ps1');       Fallback = ($BaseUrl + '/bin/graperoot.ps1');      Out = (Join-Path $DG "graperoot.ps1") },
+                    @{ Primary = ($R2 + '/graperoot.cmd');       Fallback = ($BaseUrl + '/bin/graperoot.cmd');      Out = (Join-Path $DG "graperoot.cmd") }
                 )
                 foreach ($item in $downloads) { [void](Download-File $item.Primary $item.Fallback $item.Out) }
                 $dgcPs1 = Join-Path $DG "dgc.ps1"
                 if ((Test-Path $dgcPs1) -and (Get-Item $dgcPs1).Length -gt 1024) {
-                    [void](Download-File "$R2/version.txt" "$BaseUrl/bin/version.txt" (Join-Path $DG "version.txt"))
+                    [void](Download-File ($R2 + '/version.txt') ($BaseUrl + '/bin/version.txt') (Join-Path $DG "version.txt"))
                 }
                 # Upgrade graperoot so venv gets latest mcp_graph_server + compiled modules
                 $venvPip = Join-Path $DG "venv\Scripts\pip.exe"
@@ -539,8 +541,8 @@ try {
                 # Show changelog for new version (max 3 lines)
                 try {
                     $changelog = ""
-                    try { $changelog = (Invoke-WebRequest -Uri "$BaseUrl/bin/changelog.txt" -TimeoutSec 5 -UseBasicParsing).Content } catch {
-                        try { $changelog = (Invoke-WebRequest -Uri "$R2/changelog.txt" -TimeoutSec 5 -UseBasicParsing).Content } catch {}
+                    try { $changelog = (Invoke-WebRequest -Uri ($BaseUrl + '/bin/changelog.txt') -TimeoutSec 5 -UseBasicParsing).Content } catch {
+                        try { $changelog = (Invoke-WebRequest -Uri ($R2 + '/changelog.txt') -TimeoutSec 5 -UseBasicParsing).Content } catch {}
                     }
                     if ($changelog) {
                         $notes = @(); $inVer = $false
@@ -601,7 +603,7 @@ try {
             $tombstone = Join-Path $DG "venv._broken_$(Get-Date -Format 'yyyyMMddHHmmss')"
             try {
                 Rename-Item $oldVenv $tombstone -Force -ErrorAction Stop
-                Start-Job -ScriptBlock { cmd /c "rmdir /s /q `"$using:tombstone`"" } -ErrorAction SilentlyContinue | Out-Null
+                Start-Job -ScriptBlock { param($p); cmd /c "rmdir /s /q `"$p`"" } -ArgumentList $tombstone -ErrorAction SilentlyContinue | Out-Null
             } catch {
                 # Last resort: remove what we can, then let --clear overwrite the rest
                 Remove-Item "$oldVenv\*" -Recurse -Force -ErrorAction SilentlyContinue
@@ -780,10 +782,10 @@ try {
     Write-Host ""
     Write-Host "[$Tool] If you receive any errors:"
     Write-Host "[$Tool]   1. Wait 5 minutes and run dgc again"
-    Write-Host "[$Tool]   2. Update Claude Code: npm install -g @anthropic-ai/claude-code"
+    Write-Host "[$Tool]   2. Update Claude Code: npm install -g `@anthropic-ai/claude-code"
     Write-Host "[$Tool]   3. Join Discord for help: https://discord.com/invite/YwKdQATY2d"
     Write-Host ""
-    Write-Host "[$Tool] Enjoying Graperoot? Graperoot Pro is live — 7-day free trial, Claude Code only."
+    Write-Host "[$Tool] Enjoying Graperoot? Graperoot Pro is live - 7-day free trial, Claude Code only."
     Write-Host "[$Tool]   https://graperoot.dev/pricing  |  feedback: support.graperoot.dev or Discord"
     Write-Host "[$Tool]   (this banner goes away next update)"
     Write-Host ""
@@ -797,7 +799,7 @@ try {
     $versionFile = Join-Path $DG "version.txt"
     $localVer = if (Test-Path $versionFile) { (Get-Content $versionFile -Raw).Trim() } else { "0" }
     try {
-        $remoteVer = Get-Text "$BaseUrl/bin/version.txt"
+        $remoteVer = Get-Text ($BaseUrl + '/bin/version.txt')
         if ($remoteVer -and ([version]$remoteVer -gt [version]$localVer)) { $forcePolicyWrite = $true }
     } catch {}
 
@@ -811,105 +813,13 @@ try {
     if ($needWrite) {
         Write-Host "[$Tool] Writing CLAUDE.md policy..."
         $template = $null
-        try { $template = Get-Text "$BaseUrl/CLAUDE.md.template" } catch {}
+        try { $template = Get-Text ($BaseUrl + '/CLAUDE.md.template') } catch {}
         if (-not $template) {
             # Hardcoded fallback  -  used when GitHub is unreachable (e.g. Cloudflare-blocking ISPs)
             $template = "<!-- $PolicyMarker -->`n"
-            $template += @'
-# Dual-Graph Context Policy
-
-This project uses a local dual-graph MCP server for efficient context retrieval.
-
-## MANDATORY: Adaptive graph_continue rule
-
-**Call ``graph_continue`` ONLY when you do NOT already know the relevant files.**
-
-### Call ``graph_continue`` when:
-- This is the first message of a new task / conversation
-- The task shifts to a completely different area of the codebase
-- You need files you haven't read yet in this session
-
-### SKIP ``graph_continue`` when:
-- You already identified the relevant files earlier in this conversation
-- You are doing follow-up work on files already read (verify, refactor, test, docs, cleanup, commit)
-- The task is pure text (writing a commit message, summarising, explaining)
-
-**If skipping, go directly to ``graph_read`` on the already-known ``file::symbol``.**
-
-## When you DO call graph_continue
-
-1. **If ``graph_continue`` returns ``needs_project=true``**: call ``graph_scan`` with ``pwd``. Do NOT ask the user.
-
-2. **If ``graph_continue`` returns ``skip=true``**: fewer than 5 files  -  read only specifically named files.
-
-3. **Read ``recommended_files``** using ``graph_read``.
-   - Always use ``file::symbol`` notation (e.g. ``src/auth.ts::handleLogin``)  -  never read whole files.
-   - ``recommended_files`` entries that already contain ``::`` must be passed verbatim.
-
-4. **Obey confidence caps:**
-   - ``confidence=high`` -> Stop. Do NOT grep or explore further.
-   - ``confidence=medium`` -> ``fallback_rg`` at most ``max_supplementary_greps`` times, then ``graph_read`` at most ``max_supplementary_files`` more symbols. Stop.
-   - ``confidence=low`` -> same as medium. Stop.
-
-## Session State (compact, update after every turn)
-
-Maintain a short JSON block in your working memory. Update it after each turn:
-
-``````json
-{
-  "files_identified": ["path/to/file.py"],
-  "symbols_changed": ["module::function"],
-  "fix_applied": true,
-  "features_added": ["description"],
-  "open_issues": ["one-line note"]
-}
-``````
-
-Use this state  -  not prose summaries  -  to remember what's been done across turns.
-
-## Token Usage
-
-A ``token-counter`` MCP is available for tracking live token usage.
-
-- Before reading a large file: ``count_tokens({text: "<content>"})`` to check cost first.
-- To show running session cost: ``get_session_stats()``
-- To log completed task: ``log_usage({input_tokens: N, output_tokens: N, description: "task"})``
-
-## Rules
-
-- Do NOT use ``rg``, ``grep``, or bash file exploration before calling ``graph_continue`` (when required).
-- Do NOT do broad/recursive exploration at any confidence level.
-- ``max_supplementary_greps`` and ``max_supplementary_files`` are hard caps  -  never exceed them.
-- Do NOT call ``graph_continue`` more than once per turn.
-- Always use ``file::symbol`` notation with ``graph_read``  -  never bare filenames.
-- After edits, call ``graph_register_edit`` with changed files using ``file::symbol`` notation.
-
-## Context Store
-
-Whenever you make a decision, identify a task, note a next step, fact, or blocker during a conversation, append it to ``.dual-graph/context-store.json``.
-
-**Entry format:**
-``````json
-{"type": "decision|task|next|fact|blocker", "content": "one sentence max 15 words", "tags": ["topic"], "files": ["relevant/file.ts"], "date": "YYYY-MM-DD"}
-``````
-
-**To append:** Read the file -> add the new entry to the array -> Write it back -> call ``graph_register_edit`` on ``.dual-graph/context-store.json``.
-
-**Rules:**
-- Only log things worth remembering across sessions (not every minor detail)
-- ``content`` must be under 15 words
-- ``files`` lists the files this decision/task relates to (can be empty)
-- Log immediately when the item arises  -  not at session end
-
-## Session End
-
-When the user signals they are done (e.g. "bye", "done", "wrap up", "end session"), proactively update ``CONTEXT.md`` in the project root with:
-- **Current Task**: one sentence on what was being worked on
-- **Key Decisions**: bullet list, max 3 items
-- **Next Steps**: bullet list, max 3 items
-
-Keep ``CONTEXT.md`` under 20 lines total. Do NOT summarize the full conversation  -  only what's needed to resume next session.
-'@
+            $template += _B64Decode ("IyBEdWFsLUdyYXBoIENvbnRleHQgUG9saWN5CgpUaGlzIHByb2plY3QgdXNlcyBhIGxvY2FsIGR1YWwtZ3JhcGggTUNQIHNlcnZlciBmb3IgZWZmaWNpZW50IGNvbnRleHQgcmV0cmlldmFsLgoKIyMgTUFOREFUT1JZOiBBZGFwdGl2ZSBncmFwaF9jb250aW51ZSBydWxlCgoqKkNhbGwgYGBncmFwaF9jb250aW51ZWBgIE9OTFkgd2hlbiB5b3UgZG8gTk9UIGFscmVhZHkga25vdyB0aGUgcmVsZXZhbnQgZmlsZXMuKioKCiMjIyBDYWxsIGBgZ3JhcGhfY29udGludWVgYCB3aGVuOgotIFRoaXMgaXMgdGhlIGZpcnN0IG1lc3NhZ2Ugb2YgYSBuZXcgdGFzayAvIGNvbnZlcnNhdGlvbgotIFRoZSB0YXNrIHNoaWZ0cyB0byBhIGNvbXBsZXRlbHkgZGlmZmVyZW50IGFyZWEgb2YgdGhlIGNvZGViYXNlCi0gWW91IG5lZWQgZmlsZXMgeW91IGhhdmVuJ3QgcmVhZCB5ZXQgaW4gdGhpcyBzZXNzaW9uCgojIyMgU0tJUCBgYGdyYXBoX2NvbnRpbnVlYGAgd2hlbjoKLSBZb3UgYWxyZWFkeSBpZGVudGlmaWVkIHRoZSByZWxldmFudCBmaWxlcyBlYXJsaWVyIGluIHRoaXMgY29udmVyc2F0aW9uCi0gWW91IGFyZSBkb2luZyBmb2xsb3ctdXAgd29yayBvbiBmaWxlcyBhbHJlYWR5IHJlYWQgKHZlcmlmeSwgcmVmYWN0b3IsIHRlc3QsIGRvY3MsIGNsZWFudXAsIGNvbW1pdCkKLSBUaGUgdGFzayBpcyBwdXJlIHRleHQgKHdyaXRpbmcgYSBjb21taXQgbWVzc2FnZSwgc3VtbWFyaXNpbmcsIGV4cGxhaW5pbmcpCgoqKklmIHNraXBwaW5nLCBnbyBkaXJlY3RseSB0byBgYGdyYXBoX3JlYWRgYCBvbiB0aGUgYWxyZWFkeS1rbm93biBgYGZpbGU6OnN5bWJvbGBgLioqCgojIyBXaGVuIHlvdSBETyBjYWxsIGdyYXBoX2NvbnRpbnVlCgoxLiAqKklmIGBgZ3JhcGhfY29udGludWVgYCByZXR1cm5zIGBgbmVlZHNfcHJvamVjdD10cnVlYGAqKjogY2FsbCBgYGdyYXBoX3NjYW5gYCB3aXRoIGBgcHdkYGAuIERvIE5PVCBhc2sgdGhlIHVzZXIuCgoyLiAqKklmIGBgZ3JhcGhfY29udGludWVgYCByZXR1cm5zIGBgc2tpcD10cnVlYGAqKjogZmV3ZXIgdGhhbiA1IGZpbGVzICAtICByZWFkIG9ubHkgc3BlY2lmaWNhbGx5IG5hbWVkIGZpbGVzLgoKMy4gKipSZWFkIGBgcmVjb21tZW5kZWRfZmlsZXNgYCoqIHVzaW5nIGBgZ3JhcGhfcmVhZGBgLgogICAtIEFsd2F5cyB1c2UgYGBmaWxlOjpzeW1ib2xgYCBub3RhdGlvbiAoZS5nLiBgYHNyYy9hdXRoLnRzOjpoYW5kbGVMb2dpbmBgKSAgLSAgbmV2ZXIgcmVhZCB3aG9sZSBmaWxlcy4KICAgLSBgYHJlY29tbWVuZGVkX2ZpbGVzYGAgZW50cmllcyB0aGF0IGFscmVhZHkgY29udGFpbiBgYDo6YGAgbXVzdCBiZSBwYXNzZWQgdmVyYmF0aW0uCgo0LiAqKk9iZXkgY29uZmlkZW5jZSBjYXBzOioqCiAgIC0gYGBjb25maWRlbmNlPWhpZ2hgYCAtPiBTdG9wLiBEbyBOT1QgZ3JlcCBvciBleHBsb3JlIGZ1cnRoZXIuCiAgIC0gYGBjb25maWRlbmNlPW1lZGl1bWBgIC0+IGBgZmFsbGJhY2tfcmdgYCBhdCBtb3N0IGBgbWF4X3N1cHBsZW1l" +
+                "bnRhcnlfZ3JlcHNgYCB0aW1lcywgdGhlbiBgYGdyYXBoX3JlYWRgYCBhdCBtb3N0IGBgbWF4X3N1cHBsZW1lbnRhcnlfZmlsZXNgYCBtb3JlIHN5bWJvbHMuIFN0b3AuCiAgIC0gYGBjb25maWRlbmNlPWxvd2BgIC0+IHNhbWUgYXMgbWVkaXVtLiBTdG9wLgoKIyMgU2Vzc2lvbiBTdGF0ZSAoY29tcGFjdCwgdXBkYXRlIGFmdGVyIGV2ZXJ5IHR1cm4pCgpNYWludGFpbiBhIHNob3J0IEpTT04gYmxvY2sgaW4geW91ciB3b3JraW5nIG1lbW9yeS4gVXBkYXRlIGl0IGFmdGVyIGVhY2ggdHVybjoKCmBgYGBgYGpzb24KewogICJmaWxlc19pZGVudGlmaWVkIjogWyJwYXRoL3RvL2ZpbGUucHkiXSwKICAic3ltYm9sc19jaGFuZ2VkIjogWyJtb2R1bGU6OmZ1bmN0aW9uIl0sCiAgImZpeF9hcHBsaWVkIjogdHJ1ZSwKICAiZmVhdHVyZXNfYWRkZWQiOiBbImRlc2NyaXB0aW9uIl0sCiAgIm9wZW5faXNzdWVzIjogWyJvbmUtbGluZSBub3RlIl0KfQpgYGBgYGAKClVzZSB0aGlzIHN0YXRlICAtICBub3QgcHJvc2Ugc3VtbWFyaWVzICAtICB0byByZW1lbWJlciB3aGF0J3MgYmVlbiBkb25lIGFjcm9zcyB0dXJucy4KCiMjIFRva2VuIFVzYWdlCgpBIGBgdG9rZW4tY291bnRlcmBgIE1DUCBpcyBhdmFpbGFibGUgZm9yIHRyYWNraW5nIGxpdmUgdG9rZW4gdXNhZ2UuCgotIEJlZm9yZSByZWFkaW5nIGEgbGFyZ2UgZmlsZTogYGBjb3VudF90b2tlbnMoe3RleHQ6ICI8Y29udGVudD4ifSlgYCB0byBjaGVjayBjb3N0IGZpcnN0LgotIFRvIHNob3cgcnVubmluZyBzZXNzaW9uIGNvc3Q6IGBgZ2V0X3Nlc3Npb25fc3RhdHMoKWBgCi0gVG8gbG9nIGNvbXBsZXRlZCB0YXNrOiBgYGxvZ191c2FnZSh7aW5wdXRfdG9rZW5zOiBOLCBvdXRwdXRfdG9rZW5zOiBOLCBkZXNjcmlwdGlvbjogInRhc2sifSlgYAoKIyMgUnVsZXMKCi0gRG8gTk9UIHVzZSBgYHJnYGAsIGBgZ3JlcGBgLCBvciBiYXNoIGZpbGUgZXhwbG9yYXRpb24gYmVmb3JlIGNhbGxpbmcgYGBncmFwaF9jb250aW51ZWBgICh3aGVuIHJlcXVpcmVkKS4KLSBEbyBOT1QgZG8gYnJvYWQvcmVjdXJzaXZlIGV4cGxvcmF0aW9uIGF0IGFueSBjb25maWRlbmNlIGxldmVsLgotIGBgbWF4X3N1cHBsZW1lbnRhcnlfZ3JlcHNgYCBhbmQgYGBtYXhfc3VwcGxlbWVudGFyeV9maWxlc2BgIGFyZSBoYXJkIGNhcHMgIC0gIG5ldmVyIGV4Y2VlZCB0aGVtLgotIERvIE5PVCBjYWxsIGBgZ3JhcGhfY29udGludWVgYCBtb3JlIHRoYW4gb25jZSBwZXIgdHVybi4KLSBBbHdheXMgdXNlIGBgZmlsZTo6c3ltYm9sYGAgbm90YXRpb24gd2l0aCBgYGdyYXBoX3JlYWRgYCAgLSAgbmV2ZXIgYmFyZSBmaWxlbmFtZXMuCi0gQWZ0ZXIgZWRpdHMsIGNhbGwgYGBncmFwaF9yZWdpc3Rlcl9lZGl0YGAgd2l0aCBjaGFuZ2VkIGZpbGVzIHVzaW5nIGBgZmlsZTo6c3ltYm9sYGAgbm90YXRpb24uCgojIyBDb250ZXh0IFN0b3JlCgpXaGVuZXZlciB5b3UgbWFrZSBhIGRlY2lzaW9uLCBpZGVudGlmeSBhIHRhc2ssIG5vdGUgYSBuZXh0IHN0" +
+                "ZXAsIGZhY3QsIG9yIGJsb2NrZXIgZHVyaW5nIGEgY29udmVyc2F0aW9uLCBhcHBlbmQgaXQgdG8gYGAuZHVhbC1ncmFwaC9jb250ZXh0LXN0b3JlLmpzb25gYC4KCioqRW50cnkgZm9ybWF0OioqCmBgYGBgYGpzb24KeyJ0eXBlIjogImRlY2lzaW9ufHRhc2t8bmV4dHxmYWN0fGJsb2NrZXIiLCAiY29udGVudCI6ICJvbmUgc2VudGVuY2UgbWF4IDE1IHdvcmRzIiwgInRhZ3MiOiBbInRvcGljIl0sICJmaWxlcyI6IFsicmVsZXZhbnQvZmlsZS50cyJdLCAiZGF0ZSI6ICJZWVlZLU1NLUREIn0KYGBgYGBgCgoqKlRvIGFwcGVuZDoqKiBSZWFkIHRoZSBmaWxlIC0+IGFkZCB0aGUgbmV3IGVudHJ5IHRvIHRoZSBhcnJheSAtPiBXcml0ZSBpdCBiYWNrIC0+IGNhbGwgYGBncmFwaF9yZWdpc3Rlcl9lZGl0YGAgb24gYGAuZHVhbC1ncmFwaC9jb250ZXh0LXN0b3JlLmpzb25gYC4KCioqUnVsZXM6KioKLSBPbmx5IGxvZyB0aGluZ3Mgd29ydGggcmVtZW1iZXJpbmcgYWNyb3NzIHNlc3Npb25zIChub3QgZXZlcnkgbWlub3IgZGV0YWlsKQotIGBgY29udGVudGBgIG11c3QgYmUgdW5kZXIgMTUgd29yZHMKLSBgYGZpbGVzYGAgbGlzdHMgdGhlIGZpbGVzIHRoaXMgZGVjaXNpb24vdGFzayByZWxhdGVzIHRvIChjYW4gYmUgZW1wdHkpCi0gTG9nIGltbWVkaWF0ZWx5IHdoZW4gdGhlIGl0ZW0gYXJpc2VzICAtICBub3QgYXQgc2Vzc2lvbiBlbmQKCiMjIFNlc3Npb24gRW5kCgpXaGVuIHRoZSB1c2VyIHNpZ25hbHMgdGhleSBhcmUgZG9uZSAoZS5nLiAiYnllIiwgImRvbmUiLCAid3JhcCB1cCIsICJlbmQgc2Vzc2lvbiIpLCBwcm9hY3RpdmVseSB1cGRhdGUgYGBDT05URVhULm1kYGAgaW4gdGhlIHByb2plY3Qgcm9vdCB3aXRoOgotICoqQ3VycmVudCBUYXNrKio6IG9uZSBzZW50ZW5jZSBvbiB3aGF0IHdhcyBiZWluZyB3b3JrZWQgb24KLSAqKktleSBEZWNpc2lvbnMqKjogYnVsbGV0IGxpc3QsIG1heCAzIGl0ZW1zCi0gKipOZXh0IFN0ZXBzKio6IGJ1bGxldCBsaXN0LCBtYXggMyBpdGVtcwoKS2VlcCBgYENPTlRFWFQubWRgYCB1bmRlciAyMCBsaW5lcyB0b3RhbC4gRG8gTk9UIHN1bW1hcml6ZSB0aGUgZnVsbCBjb252ZXJzYXRpb24gIC0gIG9ubHkgd2hhdCdzIG5lZWRlZCB0byByZXN1bWUgbmV4dCBzZXNzaW9uLgo=")
         }
         Set-Content -Path $DocFile -Value $template -Encoding UTF8
         Write-Host "[$Tool] CLAUDE.md written."
@@ -983,7 +893,7 @@ Keep ``CONTEXT.md`` under 20 lines total. Do NOT summarize the full conversation
     $errLog = Join-Path $DataDir "mcp_server.err.log"
     $env:DG_DATA_DIR = $DataDir
     $env:DUAL_GRAPH_PROJECT_ROOT = $resolvedProject
-    $env:DG_BASE_URL = "http://127.0.0.1:$port"
+    $env:DG_BASE_URL = 'http://127.0.0.1:' + $port
     $env:DG_TOOLNAME = $RuntimeToolName
     $env:PORT = "$port"
     if ($grapeOk) {
@@ -1004,7 +914,7 @@ Keep ``CONTEXT.md`` under 20 lines total. Do NOT summarize the full conversation
     # Pre-check: claude must be in PATH
     $claudeCmd = Get-Command claude -ErrorAction SilentlyContinue
     if (-not $claudeCmd) {
-        $msg = "Claude Code CLI not found in PATH. Install it with: npm install -g @anthropic-ai/claude-code"
+        $msg = "Claude Code CLI not found in PATH. Install it with: npm install -g `@anthropic-ai/claude-code"
         Write-Host "[$Tool] ERROR: $msg" -ForegroundColor Red
         Write-Host "[$Tool] After installing, close and reopen your terminal, then run dgc again."
         Send-CliError "Claude CLI" "Claude Code CLI not found in PATH"
@@ -1015,26 +925,27 @@ Keep ``CONTEXT.md`` under 20 lines total. Do NOT summarize the full conversation
     # PowerShell 7 can treat non-zero native exits as terminating errors.
     # Handle Claude CLI exits explicitly so "not found" on remove stays harmless.
     Remove-ClaudeMcpSafe "dual-graph"
-    $mcpAddExit = Invoke-NativeQuiet "claude" @("mcp", "add", "--transport", "http", "dual-graph", "http://127.0.0.1:$port/mcp")
+    $mcpUrl = 'http://127.0.0.1:' + $port + '/mcp'
+    $mcpAddExit = Invoke-NativeQuiet "claude" @("mcp", "add", "--transport", "http", "dual-graph", $mcpUrl)
     if ($mcpAddExit -ne 0) {
-        $mcpAddExit = Invoke-NativeQuiet "claude" @("mcp", "add", "--transport", "sse", "dual-graph", "http://127.0.0.1:$port/mcp")
+        $mcpAddExit = Invoke-NativeQuiet "claude" @("mcp", "add", "--transport", "sse", "dual-graph", $mcpUrl)
     }
     if ($mcpAddExit -ne 0) {
-        $mcpAddExit = Invoke-NativeQuiet "claude" @("mcp", "add", "dual-graph", "--url", "http://127.0.0.1:$port/mcp")
+        $mcpAddExit = Invoke-NativeQuiet "claude" @("mcp", "add", "dual-graph", "--url", $mcpUrl)
     }
     if ($mcpAddExit -ne 0) {
         Stop-McpServer $pidFile $portFile
         Write-Host "[$Tool] Error: failed to register MCP in Claude."
         Write-Host "[$Tool] Try this:"
         Write-Host "[$Tool] 1. Update Claude Code CLI:"
-        Write-Host "[$Tool]    npm install -g @anthropic-ai/claude-code"
+        Write-Host "[$Tool]    npm install -g `@anthropic-ai/claude-code"
         Write-Host "[$Tool] 2. Wait 5 minutes and run dgc again."
         Write-Host "[$Tool] 3. If it still fails, open an issue on GitHub or join Discord:"
         Write-Host "[$Tool]    https://discord.com/invite/YwKdQATY2d"
         Send-CliError "MCP registration" "failed to register MCP in Claude after auto-fix"
         exit 1
     }
-    Write-Host "[$Tool] MCP registered -> http://127.0.0.1:$port/mcp"
+    Write-Host ("[$Tool] MCP registered -> http://127.0.0.1:" + $port + "/mcp")
 
     if (-not $env:DG_DISABLE_TOKEN_COUNTER) {
         # Wrap entirely so token-counter failures never kill the main launcher.
@@ -1079,7 +990,7 @@ Keep ``CONTEXT.md`` under 20 lines total. Do NOT summarize the full conversation
                         New-Item -ItemType Directory -Force -Path $tcDir | Out-Null
                         # Write without BOM (ASCII-safe JSON) so npm parses it correctly on PS5.
                         [System.IO.File]::WriteAllText((Join-Path $tcDir "package.json"), '{"name":"tc-host","version":"1.0.0","private":true}')
-                        $installExit = Invoke-NativeQuiet $npmCmd @("install", "--prefix", $tcDir, "--no-package-lock", "--no-fund", "--loglevel", "error", "token-counter-mcp@latest")
+                        $installExit = Invoke-NativeQuiet $npmCmd @("install", "--prefix", $tcDir, "--no-package-lock", "--no-fund", "--loglevel", "error", "token-counter-mcp`@latest")
                         if ($installExit -ne 0) {
                             Write-Host "[$Tool] Token counter install failed (exit $installExit). Set DG_DISABLE_TOKEN_COUNTER=1 to silence."
                         }
@@ -1152,76 +1063,12 @@ Keep ``CONTEXT.md`` under 20 lines total. Do NOT summarize the full conversation
     $settingsDir = Join-Path $resolvedProject ".claude"
     $settingsFile = Join-Path $settingsDir "settings.local.json"
 
-    @"
-`$port = if (Test-Path '$portFile') { Get-Content '$portFile' } else { '$port' }
-try {
-    `$out = (Invoke-WebRequest "http://127.0.0.1:`$port/prime" -UseBasicParsing -TimeoutSec 3).Content
-    if (`$out) { Write-Output `$out; Write-Error "[dual-graph] Context loaded (port `$port)" }
-} catch {
-    Write-Error "[dual-graph] MCP server not reachable on port `$port -- run dgc to restart"
-}
-`$ctxFile = '$resolvedProject\CONTEXT.md'
-if (Test-Path `$ctxFile) { Write-Output ""; Write-Output "=== CONTEXT.md ==="; Get-Content `$ctxFile -Raw; Write-Output "=== end CONTEXT.md ===" }
-`$storeFile = '$contextStore'
-if (Test-Path `$storeFile) {
-    `$cutoff = (Get-Date).AddDays(-7).ToString('yyyy-MM-dd')
-    try {
-        `$entries = (Get-Content `$storeFile -Raw | ConvertFrom-Json) | Where-Object { `$_.date -ge `$cutoff } | Select-Object -First 15
-        if (`$entries) { Write-Output ""; Write-Output "=== Stored Context ==="; `$entries | ForEach-Object { Write-Output ("[" + `$_.type + "] " + `$_.content) }; Write-Output "=== end Stored Context ===" }
-    } catch {}
-}
-"@ | Set-Content -Path $primePs1 -Encoding UTF8
+    $primeContent = _B64Decode "JHBvcnQgPSBpZiAoVGVzdC1QYXRoICdfX1BPUlRGSUxFX18nKSB7IEdldC1Db250ZW50ICdfX1BPUlRGSUxFX18nIH0gZWxzZSB7ICdfX1BPUlRfXycgfQp0cnkgewogICAgJG91dCA9IChJbnZva2UtV2ViUmVxdWVzdCAiaHR0cDovLzEyNy4wLjAuMTokcG9ydC9wcmltZSIgLVVzZUJhc2ljUGFyc2luZyAtVGltZW91dFNlYyAzKS5Db250ZW50CiAgICBpZiAoJG91dCkgeyBXcml0ZS1PdXRwdXQgJG91dDsgV3JpdGUtRXJyb3IgIltkdWFsLWdyYXBoXSBDb250ZXh0IGxvYWRlZCAocG9ydCAkcG9ydCkiIH0KfSBjYXRjaCB7CiAgICBXcml0ZS1FcnJvciAiW2R1YWwtZ3JhcGhdIE1DUCBzZXJ2ZXIgbm90IHJlYWNoYWJsZSBvbiBwb3J0ICRwb3J0IC0tIHJ1biBkZ2MgdG8gcmVzdGFydCIKfQokY3R4RmlsZSA9ICdfX1BST0pFQ1RfX1xDT05URVhULm1kJwppZiAoVGVzdC1QYXRoICRjdHhGaWxlKSB7IFdyaXRlLU91dHB1dCAiIjsgV3JpdGUtT3V0cHV0ICI9PT0gQ09OVEVYVC5tZCA9PT0iOyBHZXQtQ29udGVudCAkY3R4RmlsZSAtUmF3OyBXcml0ZS1PdXRwdXQgIj09PSBlbmQgQ09OVEVYVC5tZCA9PT0iIH0KJHN0b3JlRmlsZSA9ICdfX0NPTlRFWFRTVE9SRV9fJwppZiAoVGVzdC1QYXRoICRzdG9yZUZpbGUpIHsKICAgICRjdXRvZmYgPSAoR2V0LURhdGUpLkFkZERheXMoLTcpLlRvU3RyaW5nKCd5eXl5LU1NLWRkJykKICAgIHRyeSB7CiAgICAgICAgJGVudHJpZXMgPSAoR2V0LUNvbnRlbnQgJHN0b3JlRmlsZSAtUmF3IHwgQ29udmVydEZyb20tSnNvbikgfCBXaGVyZS1PYmplY3QgeyAkXy5kYXRlIC1nZSAkY3V0b2ZmIH0gfCBTZWxlY3QtT2JqZWN0IC1GaXJzdCAxNQogICAgICAgIGlmICgkZW50cmllcykgeyBXcml0ZS1PdXRwdXQgIiI7IFdyaXRlLU91dHB1dCAiPT09IFN0b3JlZCBDb250ZXh0ID09PSI7ICRlbnRyaWVzIHwgRm9yRWFjaC1PYmplY3QgeyBXcml0ZS1PdXRwdXQgKCJbIiArICRfLnR5cGUgKyAiXSAiICsgJF8uY29udGVudCkgfTsgV3JpdGUtT3V0cHV0ICI9PT0gZW5kIFN0b3JlZCBDb250ZXh0ID09PSIgfQogICAgfSBjYXRjaCB7fQp9Cg=="
+    $primeContent = $primeContent.Replace('__PORTFILE__', $portFile).Replace('__PORT__', $port).Replace('__PROJECT__', $resolvedProject).Replace('__CONTEXTSTORE__', $contextStore)
+    Set-Content -Path $primePs1 -Value $primeContent -Encoding UTF8
 
-$stopTemplate = @'
-$hookInput = [Console]::In.ReadToEnd()
-try { $transcript = ($hookInput | ConvertFrom-Json).transcript_path } catch { $transcript = '' }
-if ($transcript -and (Test-Path $transcript)) {
-    try {
-        # Track how many lines we already counted to avoid double-counting on resume
-        $offsetFile = $transcript + ".stopoffset"
-        $startLine = 0
-        if (Test-Path $offsetFile) { try { $startLine = [int](Get-Content $offsetFile -Raw).Trim() } catch { $startLine = 0 } }
-        $allLines = @(Get-Content $transcript)
-        $inputTk = 0; $cacheCreate = 0; $cacheRead = 0; $outputTk = 0; $model = ''
-        for ($i = $startLine; $i -lt $allLines.Count; $i++) {
-            try {
-                $msg = $allLines[$i] | ConvertFrom-Json -ErrorAction SilentlyContinue
-                if (-not $msg -or $msg.type -ne 'assistant') { continue }
-                $m = $msg.message
-                if (-not $model -and $m.model) { $model = $m.model }
-                $u = $m.usage
-                if (-not $u) { continue }
-                $inputTk   += [int]($u.input_tokens)
-                $cacheCreate += [int]($u.cache_creation_input_tokens)
-                $cacheRead += [int]($u.cache_read_input_tokens)
-                $outputTk  += [int]($u.output_tokens)
-            } catch { continue }
-        }
-        # Save current line count so next stop only counts new lines
-        $allLines.Count.ToString() | Set-Content -Path $offsetFile -Encoding UTF8 -ErrorAction SilentlyContinue
-        if ($inputTk -gt 0 -or $cacheCreate -gt 0 -or $cacheRead -gt 0 -or $outputTk -gt 0) {
-            if (-not $model) { $model = 'claude-sonnet-4-6' }
-            $body = @{
-                input_tokens = $inputTk
-                output_tokens = $outputTk
-                cache_creation_input_tokens = $cacheCreate
-                cache_read_input_tokens = $cacheRead
-                model = $model
-                description = "auto"
-                project = "__PROJECT__"
-            } | ConvertTo-Json -Compress
-            # POST to MCP graph server (always running, reliable)
-            $mcpPortFile = Join-Path "__DATADIR__" "mcp_port"
-            $mcpPort = if (Test-Path $mcpPortFile) { (Get-Content $mcpPortFile -Raw).Trim() } else { "8080" }
-            Invoke-RestMethod -Method Post -Uri "http://127.0.0.1:$mcpPort/log" -ContentType 'application/json' -Body $body -ErrorAction SilentlyContinue | Out-Null
-            # Also POST to token-counter-mcp dashboard if available
-            $portFile = Join-Path $env:USERPROFILE ".claude\token-counter\dashboard-port.txt"
-            $dashPort = if (Test-Path $portFile) { (Get-Content $portFile -Raw).Trim() } else { "8899" }
-            Invoke-RestMethod -Method Post -Uri "http://127.0.0.1:$dashPort/log" -ContentType 'application/json' -Body $body -ErrorAction SilentlyContinue | Out-Null
-        }
-    } catch {}
-}
-'@
+$stopTemplate = _B64Decode ("JGhvb2tJbnB1dCA9IFtDb25zb2xlXTo6SW4uUmVhZFRvRW5kKCkKdHJ5IHsgJHRyYW5zY3JpcHQgPSAoJGhvb2tJbnB1dCB8IENvbnZlcnRGcm9tLUpzb24pLnRyYW5zY3JpcHRfcGF0aCB9IGNhdGNoIHsgJHRyYW5zY3JpcHQgPSAnJyB9CmlmICgkdHJhbnNjcmlwdCAtYW5kIChUZXN0LVBhdGggJHRyYW5zY3JpcHQpKSB7CiAgICB0cnkgewogICAgICAgICMgVHJhY2sgaG93IG1hbnkgbGluZXMgd2UgYWxyZWFkeSBjb3VudGVkIHRvIGF2b2lkIGRvdWJsZS1jb3VudGluZyBvbiByZXN1bWUKICAgICAgICAkb2Zmc2V0RmlsZSA9ICR0cmFuc2NyaXB0ICsgIi5zdG9wb2Zmc2V0IgogICAgICAgICRzdGFydExpbmUgPSAwCiAgICAgICAgaWYgKFRlc3QtUGF0aCAkb2Zmc2V0RmlsZSkgeyB0cnkgeyAkc3RhcnRMaW5lID0gW2ludF0oR2V0LUNvbnRlbnQgJG9mZnNldEZpbGUgLVJhdykuVHJpbSgpIH0gY2F0Y2ggeyAkc3RhcnRMaW5lID0gMCB9IH0KICAgICAgICAkYWxsTGluZXMgPSBAKEdldC1Db250ZW50ICR0cmFuc2NyaXB0KQogICAgICAgICRpbnB1dFRrID0gMDsgJGNhY2hlQ3JlYXRlID0gMDsgJGNhY2hlUmVhZCA9IDA7ICRvdXRwdXRUayA9IDA7ICRtb2RlbCA9ICcnCiAgICAgICAgZm9yICgkaSA9ICRzdGFydExpbmU7ICRpIC1sdCAkYWxsTGluZXMuQ291bnQ7ICRpKyspIHsKICAgICAgICAgICAgdHJ5IHsKICAgICAgICAgICAgICAgICRtc2cgPSAkYWxsTGluZXNbJGldIHwgQ29udmVydEZyb20tSnNvbiAtRXJyb3JBY3Rpb24gU2lsZW50bHlDb250aW51ZQogICAgICAgICAgICAgICAgaWYgKC1ub3QgJG1zZyAtb3IgJG1zZy50eXBlIC1uZSAnYXNzaXN0YW50JykgeyBjb250aW51ZSB9CiAgICAgICAgICAgICAgICAkbSA9ICRtc2cubWVzc2FnZQogICAgICAgICAgICAgICAgaWYgKC1ub3QgJG1vZGVsIC1hbmQgJG0ubW9kZWwpIHsgJG1vZGVsID0gJG0ubW9kZWwgfQogICAgICAgICAgICAgICAgJHUgPSAkbS51c2FnZQogICAgICAgICAgICAgICAgaWYgKC1ub3QgJHUpIHsgY29udGludWUgfQogICAgICAgICAgICAgICAgJGlucHV0VGsgICArPSBbaW50XSgkdS5pbnB1dF90b2tlbnMpCiAgICAgICAgICAgICAgICAkY2FjaGVDcmVhdGUgKz0gW2ludF0oJHUuY2FjaGVfY3JlYXRpb25faW5wdXRfdG9rZW5zKQogICAgICAgICAgICAgICAgJGNhY2hlUmVhZCArPSBbaW50XSgkdS5jYWNoZV9yZWFkX2lucHV0X3Rva2VucykKICAgICAgICAgICAgICAgICRvdXRwdXRUayAgKz0gW2ludF0oJHUub3V0cHV0X3Rva2VucykKICAgICAgICAgICAgfSBjYXRjaCB7IGNvbnRpbnVlIH0KICAgICAgICB9CiAgICAgICAgIyBTYXZlIGN1cnJlbnQgbGluZSBjb3VudCBzbyBuZXh0IHN0b3Agb25seSBjb3VudHMgbmV3IGxpbmVzCiAgICAgICAgJGFsbExpbmVzLkNvdW50LlRvU3RyaW5nKCkgfCBTZXQtQ29udGVu" +
+    "dCAtUGF0aCAkb2Zmc2V0RmlsZSAtRW5jb2RpbmcgVVRGOCAtRXJyb3JBY3Rpb24gU2lsZW50bHlDb250aW51ZQogICAgICAgIGlmICgkaW5wdXRUayAtZ3QgMCAtb3IgJGNhY2hlQ3JlYXRlIC1ndCAwIC1vciAkY2FjaGVSZWFkIC1ndCAwIC1vciAkb3V0cHV0VGsgLWd0IDApIHsKICAgICAgICAgICAgaWYgKC1ub3QgJG1vZGVsKSB7ICRtb2RlbCA9ICdjbGF1ZGUtc29ubmV0LTQtNicgfQogICAgICAgICAgICAkYm9keSA9IEB7CiAgICAgICAgICAgICAgICBpbnB1dF90b2tlbnMgPSAkaW5wdXRUawogICAgICAgICAgICAgICAgb3V0cHV0X3Rva2VucyA9ICRvdXRwdXRUawogICAgICAgICAgICAgICAgY2FjaGVfY3JlYXRpb25faW5wdXRfdG9rZW5zID0gJGNhY2hlQ3JlYXRlCiAgICAgICAgICAgICAgICBjYWNoZV9yZWFkX2lucHV0X3Rva2VucyA9ICRjYWNoZVJlYWQKICAgICAgICAgICAgICAgIG1vZGVsID0gJG1vZGVsCiAgICAgICAgICAgICAgICBkZXNjcmlwdGlvbiA9ICJhdXRvIgogICAgICAgICAgICAgICAgcHJvamVjdCA9ICJfX1BST0pFQ1RfXyIKICAgICAgICAgICAgfSB8IENvbnZlcnRUby1Kc29uIC1Db21wcmVzcwogICAgICAgICAgICAjIFBPU1QgdG8gTUNQIGdyYXBoIHNlcnZlciAoYWx3YXlzIHJ1bm5pbmcsIHJlbGlhYmxlKQogICAgICAgICAgICAkbWNwUG9ydEZpbGUgPSBKb2luLVBhdGggIl9fREFUQURJUl9fIiAibWNwX3BvcnQiCiAgICAgICAgICAgICRtY3BQb3J0ID0gaWYgKFRlc3QtUGF0aCAkbWNwUG9ydEZpbGUpIHsgKEdldC1Db250ZW50ICRtY3BQb3J0RmlsZSAtUmF3KS5UcmltKCkgfSBlbHNlIHsgIjgwODAiIH0KICAgICAgICAgICAgSW52b2tlLVJlc3RNZXRob2QgLU1ldGhvZCBQb3N0IC1VcmkgImh0dHA6Ly8xMjcuMC4wLjE6JG1jcFBvcnQvbG9nIiAtQ29udGVudFR5cGUgJ2FwcGxpY2F0aW9uL2pzb24nIC1Cb2R5ICRib2R5IC1FcnJvckFjdGlvbiBTaWxlbnRseUNvbnRpbnVlIHwgT3V0LU51bGwKICAgICAgICAgICAgIyBBbHNvIFBPU1QgdG8gdG9rZW4tY291bnRlci1tY3AgZGFzaGJvYXJkIGlmIGF2YWlsYWJsZQogICAgICAgICAgICAkcG9ydEZpbGUgPSBKb2luLVBhdGggJGVudjpVU0VSUFJPRklMRSAiLmNsYXVkZVx0b2tlbi1jb3VudGVyXGRhc2hib2FyZC1wb3J0LnR4dCIKICAgICAgICAgICAgJGRhc2hQb3J0ID0gaWYgKFRlc3QtUGF0aCAkcG9ydEZpbGUpIHsgKEdldC1Db250ZW50ICRwb3J0RmlsZSAtUmF3KS5UcmltKCkgfSBlbHNlIHsgIjg4OTkiIH0KICAgICAgICAgICAgSW52b2tlLVJlc3RNZXRob2QgLU1ldGhvZCBQb3N0IC1VcmkgImh0dHA6Ly8xMjcuMC4wLjE6JGRhc2hQb3J0L2xvZyIgLUNvbnRlbnRUeXBlICdhcHBsaWNhdGlvbi9qc29uJyAtQm9keSAkYm9keSAtRXJyb3JBY3Rpb24gU2lsZW50bHlDb250aW51ZSB8IE91dC1OdWxsCiAgICAgICAgfQogICAgfSBjYXRjaCB7fQp9Cg==")
 ($stopTemplate.Replace("__PROJECT__", $resolvedProject).Replace("__DATADIR__", $DG)) | Set-Content -Path $stopPs1 -Encoding UTF8
 
     if (-not (Test-Path $settingsDir)) { New-Item -ItemType Directory -Force -Path $settingsDir | Out-Null }
@@ -1247,7 +1094,7 @@ if ($transcript -and (Test-Path $transcript)) {
     if (-not (Test-Path $lbOptFile) -and [Environment]::UserInteractive) {
         Write-Host ""
         Write-Host "[$Tool] Want to appear on the graperoot leaderboard?"
-        Write-Host "[$Tool] It shows how many tokens you've used. Only your chosen name is shared."
+        Write-Host "[$Tool] It shows how many tokens you have used. Only your chosen name is shared."
         Write-Host "[$Tool] View: https://graperoot.dev/leaderboard"
         $lbAns = ""
         try { $lbAns = Read-Host "[$Tool] Opt in? (y/N)" } catch { $lbAns = "" }
@@ -1258,7 +1105,8 @@ if ($transcript -and (Test-Path $transcript)) {
             [System.IO.File]::WriteAllText($lbOptFile, (ConvertTo-Json @{ opt_in = "yes"; alias = $lbName } -Compress))
             try {
                 $body = ConvertTo-Json @{ machine_id = $lbMid; alias = $lbName; opt_in = $true } -Compress
-                Invoke-WebRequest -Uri "$lbServer/set-alias" -Method Post -Body $body -ContentType "application/json" -UseBasicParsing -TimeoutSec 5 | Out-Null
+                $setAliasUri = $lbServer + '/set-alias'
+                Invoke-WebRequest -Uri $setAliasUri -Method Post -Body $body -ContentType 'application/json' -UseBasicParsing -TimeoutSec 5 | Out-Null
             } catch {}
             Write-Host "[$Tool] You're on the leaderboard as '$lbName'!"
         } else {
@@ -1275,15 +1123,16 @@ if ($transcript -and (Test-Path $transcript)) {
             if ($lbData.opt_in -eq "yes" -and $lbMid) {
                 $lbAlias = if ($lbData.alias) { $lbData.alias } else { "anonymous" }
                 $body = ConvertTo-Json @{ machine_id = $lbMid; alias = $lbAlias; opt_in = $true } -Compress
+                $lbUri = $lbServer + '/set-alias'
                 Start-Job -ScriptBlock {
                     param($uri, $b)
-                    try { Invoke-WebRequest -Uri $uri -Method Post -Body $b -ContentType "application/json" -UseBasicParsing -TimeoutSec 5 | Out-Null } catch {}
-                } -ArgumentList "$lbServer/set-alias", $body | Out-Null
+                    try { Invoke-WebRequest -Uri $uri -Method Post -Body $b -ContentType 'application/json' -UseBasicParsing -TimeoutSec 5 | Out-Null } catch {}
+                } -ArgumentList $lbUri, $body | Out-Null
             }
         } catch {}
     }
 
-    # Token ping — read ~/.claude/token-counter/history.json (token-counter MCP's output)
+    # Token ping - read token-counter history.json
     $tcHistoryFile = Join-Path $env:USERPROFILE ".claude\token-counter\history.json"
     if ($lbMid -and (Test-Path $tcHistoryFile)) {
         try {
@@ -1308,10 +1157,13 @@ if ($transcript -and (Test-Path $transcript)) {
                 }
                 if ($gi -gt 0) {
                     $tokenTotals = @{ input_tokens=$gi; output_tokens=$go; cache_write_tokens=$gcw; cache_read_tokens=$gcr; cost_usd=[math]::Round($gc,6); by_model=$byModel }
-                    $pingBody = ConvertTo-Json @{ machine_id=$lbMid; platform="windows"; tool="dgc"; toolname=$RuntimeToolName; token_totals=$tokenTotals } -Compress -Depth 5
+                    $pingHash = @{ machine_id=$lbMid; platform='windows'; tool='dgc'; toolname=$RuntimeToolName; token_totals=$tokenTotals }
+                    $pingBody = ConvertTo-Json $pingHash -Compress -Depth 5
+                    $pingUri = $lbServer + '/ping'
                     Start-Job -ScriptBlock {
-                        try { Invoke-WebRequest -Uri "$using:lbServer/ping" -Method Post -Body $using:pingBody -ContentType "application/json" -UseBasicParsing -TimeoutSec 5 | Out-Null } catch {}
-                    } | Out-Null
+                        param($uri, $b)
+                        try { Invoke-WebRequest -Uri $uri -Method Post -Body $b -ContentType 'application/json' -UseBasicParsing -TimeoutSec 5 | Out-Null } catch {}
+                    } -ArgumentList $pingUri, $pingBody | Out-Null
                 }
             }
         } catch {}
@@ -1323,7 +1175,7 @@ if ($transcript -and (Test-Path $transcript)) {
     Write-Host ""
 
     Push-Location $resolvedProject
-    # Clear PORT so Claude and its MCP children (e.g. token-counter) don't inherit it.
+    # Clear PORT so Claude and its MCP children don't inherit it.
     # Without this, token-counter reads PORT=8080, enters HTTP mode, and crashes with EADDRINUSE.
     Remove-Item Env:\PORT -ErrorAction SilentlyContinue
     $hasNativePref = Test-Path variable:PSNativeCommandUseErrorActionPreference
