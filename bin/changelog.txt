@@ -1,3 +1,6 @@
+3.10.6
+- Reverted: scan timeout and mcp-remote local fallback (caused breakage for existing users)
+
 3.10.5
 - Added: Graperoot Pro banner at startup (7-day free trial, graperoot.dev/pricing)
 - Fixed: Discord invite link updated to correct URL
