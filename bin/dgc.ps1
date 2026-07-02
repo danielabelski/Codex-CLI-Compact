@@ -814,8 +814,8 @@ try {
         try { $template = Get-Text "$BaseUrl/CLAUDE.md.template" } catch {}
         if (-not $template) {
             # Hardcoded fallback  -  used when GitHub is unreachable (e.g. Cloudflare-blocking ISPs)
-            $template = @"
-<!-- $PolicyMarker -->
+            $template = "<!-- $PolicyMarker -->`n"
+            $template += @'
 # Dual-Graph Context Policy
 
 This project uses a local dual-graph MCP server for efficient context retrieval.
@@ -909,7 +909,7 @@ When the user signals they are done (e.g. "bye", "done", "wrap up", "end session
 - **Next Steps**: bullet list, max 3 items
 
 Keep ``CONTEXT.md`` under 20 lines total. Do NOT summarize the full conversation  -  only what's needed to resume next session.
-"@
+'@
         }
         Set-Content -Path $DocFile -Value $template -Encoding UTF8
         Write-Host "[$Tool] CLAUDE.md written."

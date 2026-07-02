@@ -37,8 +37,8 @@ $ErrorActionPreference = "Continue"
 # -- Helper: write/append a policy block to a file (pure PowerShell, no Python) --
 function Write-PolicyBlock {
     param([string]$FilePath, [string]$Marker)
-    $policy = @"
-<!-- $Marker -->
+    $policy = "<!-- $Marker -->`n"
+    $policy += @'
 # Dual-Graph Context Policy
 
 This project uses a local dual-graph MCP server for efficient context retrieval.
@@ -59,7 +59,7 @@ This project uses a local dual-graph MCP server for efficient context retrieval.
 - Do NOT use grep or file exploration before calling ``graph_continue``.
 - Do NOT do broad/recursive exploration at any confidence level.
 - After edits, call ``graph_register_edit(files: ["path/to/file"])``.
-"@
+'@
     $enc = [System.Text.Encoding]::UTF8
     if (Test-Path $FilePath) {
         $existing = [System.IO.File]::ReadAllText($FilePath, $enc)
@@ -669,12 +669,8 @@ if ($Assistant -eq "cursor") {
     $CursorPolicyMarker = "dgc-policy-v11"
     if ((-not (Test-Path $CursorRulesFile)) -or (-not (Select-String -Path $CursorRulesFile -Pattern $CursorPolicyMarker -Quiet))) {
         Write-Host "[$Tool] Writing .cursor/rules/graperoot.mdc ..."
-        $MdcContent = @"
----
-description: Dual-Graph context retrieval policy
-alwaysApply: true
----
-<!-- $CursorPolicyMarker -->
+        $MdcContent = "---`ndescription: Dual-Graph context retrieval policy`nalwaysApply: true`n---`n<!-- $CursorPolicyMarker -->`n"
+        $MdcContent += @'
 # Dual-Graph Context Policy
 
 This project uses a local dual-graph MCP server for efficient context retrieval.
@@ -695,7 +691,7 @@ This project uses a local dual-graph MCP server for efficient context retrieval.
 - Do NOT use grep or file exploration before calling ``graph_continue``.
 - Do NOT do broad/recursive exploration at any confidence level.
 - After edits, call ``graph_register_edit(files: ["path/to/file"])``.
-"@
+'@
         [System.IO.File]::WriteAllText($CursorRulesFile, $MdcContent, [System.Text.Encoding]::UTF8)
         Write-Host "[$Tool] .cursor/rules/graperoot.mdc written."
     }

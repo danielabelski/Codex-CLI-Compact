@@ -1,3 +1,6 @@
+3.10.7
+- Fixed: PowerShell 5.1 parse error on Windows (here-string with markdown bullets)
+
 3.10.6
 - Reverted: scan timeout and mcp-remote local fallback (caused breakage for existing users)
 
