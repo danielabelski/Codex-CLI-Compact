@@ -213,6 +213,12 @@ try {
         return $true
     }
 
+    # Pause before exit so the window stays open when launched via "Run with PowerShell"
+    function Exit-WithPause([int]$code) {
+        Read-Host "Press Enter to close this window"
+        exit $code
+    }
+
     # ══════════════════════════════════════════════════════════════════════════════
     # PREREQUISITE CHECK  -  detect missing tools, ask user, install or stop
     # ══════════════════════════════════════════════════════════════════════════════
@@ -273,19 +279,19 @@ try {
                 } else {
                     Write-Host "[install] Python install failed. Install manually from https://python.org/downloads" -ForegroundColor Red
                     Write-Host "[install] Then run this installer again."
-                    exit 1
+                    Exit-WithPause 1
                 }
             } else {
                 Write-Host ""
                 Write-Host "[install] Please install Python 3.10+ manually, then run this installer again:" -ForegroundColor Yellow
                 Write-Host "  winget install Python.Python.3.11" -ForegroundColor White
                 Write-Host "  (or download from https://www.python.org/downloads)" -ForegroundColor White
-                exit 0
+                Exit-WithPause 0
             }
         } else {
             Write-Host "[install] Please install Python 3.10 or newer from https://www.python.org/downloads" -ForegroundColor Yellow
             Write-Host "[install] Then run this installer again."
-            exit 0
+            Exit-WithPause 0
         }
     } else {
         Write-Host "[check] Python is NOT installed." -ForegroundColor Yellow
@@ -299,20 +305,20 @@ try {
                 } else {
                     Write-Host "[install] Python install failed. Install manually from https://python.org" -ForegroundColor Red
                     Write-Host "[install] Then run this installer again."
-                    exit 1
+                    Exit-WithPause 1
                 }
             } else {
                 Write-Host ""
                 Write-Host "[install] Python is required. Install it manually, then run this installer again:" -ForegroundColor Yellow
                 Write-Host "  winget install Python.Python.3.11" -ForegroundColor White
                 Write-Host "  (or download from https://python.org)" -ForegroundColor White
-                exit 0
+                Exit-WithPause 0
             }
         } else {
             Write-Host "[check] winget not available for automatic install." -ForegroundColor Yellow
             Write-Host "[install] Please install Python 3.11 manually from https://python.org" -ForegroundColor Yellow
             Write-Host "[install] Then run this installer again."
-            exit 0
+            Exit-WithPause 0
         }
     }
 
@@ -333,20 +339,20 @@ try {
                 } else {
                     Write-Host "[install] Node.js install failed. Install manually from https://nodejs.org" -ForegroundColor Red
                     Write-Host "[install] Then run this installer again."
-                    exit 1
+                    Exit-WithPause 1
                 }
             } else {
                 Write-Host ""
                 Write-Host "[install] Node.js is required. Install it manually, then run this installer again:" -ForegroundColor Yellow
                 Write-Host "  winget install OpenJS.NodeJS.LTS" -ForegroundColor White
                 Write-Host "  (or download from https://nodejs.org)" -ForegroundColor White
-                exit 0
+                Exit-WithPause 0
             }
         } else {
             Write-Host "[check] winget not available for automatic install." -ForegroundColor Yellow
             Write-Host "[install] Please install Node.js LTS from https://nodejs.org" -ForegroundColor Yellow
             Write-Host "[install] Then run this installer again."
-            exit 0
+            Exit-WithPause 0
         }
     }
 
@@ -360,7 +366,7 @@ try {
         Write-Host "" -ForegroundColor Yellow
         Write-Host "  irm https://raw.githubusercontent.com/kunal12203/Codex-CLI-Compact/main/install.ps1 | iex" -ForegroundColor White
         Write-Host "========================================" -ForegroundColor Cyan
-        exit 0
+        Exit-WithPause 0
     }
 
     # -- Check Claude Code ---------------------------------------------------------
@@ -513,13 +519,17 @@ try {
     Write-Host "    graperoot `"C:\path\to\your\project`" --cursor   # Cursor IDE" -ForegroundColor White
     Write-Host "    graperoot `"C:\path\to\your\project`" --gemini   # Gemini CLI" -ForegroundColor White
     Write-Host ""
+    Exit-WithPause 0
 
 } catch {
-    $errMessage = Normalize-NetworkError "$($_.Exception.Message)"
+    $errMessage = if ($_.Exception -and $_.Exception.Message) {
+        try { Normalize-NetworkError "$($_.Exception.Message)" } catch { "$($_.Exception.Message)" }
+    } else { "unknown error" }
     Write-Host "`n[install] ERROR: Installation failed during: $step" -ForegroundColor Red
     Write-Host "[install] Details: $errMessage" -ForegroundColor Red
 
     Write-Host "`n[install] If you need help, please open an issue here:" -ForegroundColor Yellow
     Write-Host "[install]   https://github.com/kunal12203/Codex-CLI-Compact/issues/new" -ForegroundColor Yellow
+    Read-Host "Press Enter to close this window"
     exit 1
 }
