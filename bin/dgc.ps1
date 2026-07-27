@@ -666,15 +666,21 @@ try {
         try { Stop-Process -Id ([int](Get-Content $pidFile -Raw)) -Force -ErrorAction SilentlyContinue } catch {}
         Remove-Item $pidFile -Force -ErrorAction SilentlyContinue
     }
-    # taskkill /F works across sessions; Stop-Process is a fallback for non-Windows
-    try { & taskkill /F /IM "mcp-graph-server.exe" /T 2>$null } catch {}
+    # Kill only THIS project's previous server (by port file), not all sessions.
+    if (Test-Path $portFile) {
+        try {
+            $oldPort = [int](Get-Content $portFile -Raw)
+            Get-NetTCPConnection -LocalPort $oldPort -State Listen -ErrorAction SilentlyContinue |
+                Select-Object -ExpandProperty OwningProcess -Unique |
+                ForEach-Object { try { Stop-Process -Id $_ -Force -ErrorAction SilentlyContinue } catch {} }
+        } catch {}
+        Remove-Item $portFile -Force -ErrorAction SilentlyContinue
+    }
+    # Note: if pid/port files are both lost AND mcp-graph-server.exe is still running,
+    # pip upgrade may fail with WinError 32. This is acceptable — a retry on next launch
+    # will succeed. We do NOT kill all mcp-graph-server.exe globally as that breaks
+    # other concurrent sessions.
     try { & taskkill /F /IM "graph-builder.exe" /T 2>$null } catch {}
-    # Also kill by port (catches renamed or custom server processes)
-    try {
-        Get-NetTCPConnection -LocalPort (8080..8199) -State Listen -ErrorAction SilentlyContinue |
-            Select-Object -ExpandProperty OwningProcess -Unique |
-            ForEach-Object { try { Stop-Process -Id $_ -Force -ErrorAction SilentlyContinue } catch {} }
-    } catch {}
     Start-Sleep -Milliseconds 500
 
     # Auto-install compiled graperoot package (silent fallback to .py if it fails)
@@ -878,14 +884,8 @@ try {
         Remove-Item $portFile -Force -ErrorAction SilentlyContinue
     }
 
-    # Kill any orphaned MCP server processes left by previous sessions.
-    # taskkill /F works across terminal sessions; Stop-Process only works within same session.
-    try { & taskkill /F /IM "mcp-graph-server.exe" /T 2>$null } catch {}
-    try {
-        Get-NetTCPConnection -LocalPort (8080..8199) -State Listen -ErrorAction SilentlyContinue |
-            Select-Object -ExpandProperty OwningProcess -Unique |
-            ForEach-Object { try { Stop-Process -Id $_ -Force -ErrorAction SilentlyContinue } catch {} }
-    } catch {}
+    # Kill only THIS project's orphaned MCP server (already handled above via pidFile/portFile).
+    # Do NOT kill all servers on 8080-8199 — other sessions own those.
 
     $port = Get-FreePort
     Write-Host "[$Tool] Starting MCP server on port $port..."
