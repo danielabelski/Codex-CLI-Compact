@@ -41,6 +41,45 @@ Token savings **compound** across a session. The graph remembers which files wer
 
 ---
 
+## Other Tools vs GrapeRoot
+
+**Other tools** (CodeGraph, code-graph-mcp, and similar) give your AI a graph and let it explore:
+
+```
+You ask a question
+  → AI calls search_symbol / get_callers / trace_route
+  → AI reads results, decides what else to look up
+  → AI calls more tools
+  → AI finally has enough context to answer
+```
+
+Your AI spends turns exploring before it can reason.
+
+---
+
+**GrapeRoot** pre-loads the right context before your AI sees your question:
+
+```
+You ask a question
+  → Graph identifies relevant files automatically
+  → Files packed into the prompt
+  → AI answers immediately
+```
+
+No exploration. No extra tool calls. Your AI starts reasoning from turn one.
+
+---
+
+| | Other tools | GrapeRoot |
+|---|---|---|
+| How context is delivered | AI pulls on demand via tool calls | Pre-loaded before every turn |
+| Session memory | No | Yes — compounds across turns |
+| Token budget control | AI decides | Hard-capped per turn |
+| Turns spent exploring | Multiple | Zero |
+| Savings compound | No | Yes — each turn gets cheaper |
+
+---
+
 ## Results
 
 Benchmarked across multiple real-world codebases (7,700+ files) and 50+ engineering prompts:
@@ -218,7 +257,7 @@ The launcher checks for updates on every run and auto-updates silently. To force
 graperoot --update
 ```
 
-Current version: **3.10.9**
+Current version: **3.10.10**
 
 ---
 

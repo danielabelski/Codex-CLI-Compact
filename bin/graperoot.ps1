@@ -722,7 +722,7 @@ if ($Assistant -eq "gemini") {
     Set-Location $ProjectPath
     Write-Host "[$Tool] Starting gemini..."
     Write-Host ""
-    gemini
+    if ($Passthrough.Count -gt 0) { gemini @Passthrough } else { gemini }
 }
 
 # -- OpenCode: write project opencode.json and launch -------------------------
@@ -780,7 +780,7 @@ if ($Assistant -eq "opencode") {
     Set-Location $ProjectPath
     Write-Host "[$Tool] Starting opencode..."
     Write-Host ""
-    opencode
+    if ($Passthrough.Count -gt 0) { opencode @Passthrough } else { opencode }
 }
 
 # -- Copilot: write .vscode/mcp.json and open VS Code -------------------------
@@ -909,7 +909,7 @@ if ($Assistant -eq "antigravity") {
     Set-Location $ProjectPath
     Write-Host "[$Tool] Starting Antigravity..."
     Write-Host ""
-    agy
+    if ($Passthrough.Count -gt 0) { agy @Passthrough } else { agy }
 }
 
 # -- OpenClaw: write ~/.openclaw/openclaw.json MCP entry and launch ------------
@@ -1020,7 +1020,7 @@ if ($Assistant -eq "kilocode") {
     Set-Location $ProjectPath
     Write-Host "[$Tool] Starting kilocode..."
     Write-Host ""
-    kilo
+    if ($Passthrough.Count -gt 0) { kilo @Passthrough } else { kilo }
 }
 
 # -- MiMo Code: write .mimocode/mimocode.json and launch ---------------------
@@ -1073,7 +1073,7 @@ if ($Assistant -eq "mimocode") {
     Set-Location $ProjectPath
     Write-Host "[$Tool] Starting mimo..."
     Write-Host ""
-    mimo
+    if ($Passthrough.Count -gt 0) { mimo @Passthrough } else { mimo }
 }
 
 # Cleanup
