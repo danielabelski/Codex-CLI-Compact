@@ -1,0 +1,79 @@
+name: Build cp310 macOS wheels
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-14
+            arch: arm64
+          - os: macos-13
+            arch: x86_64
+    runs-on: ${{ matrix.os }}
+    name: cp310-macosx_${{ matrix.arch }}
+
+    steps:
+      - name: Checkout Core (source + setup.py)
+        uses: actions/checkout@v4
+        with:
+          repository: kunal12203/Claude-CLI-Compact-core
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install build deps
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install cython setuptools wheel
+
+      - name: Build wheel
+        run: python setup.py bdist_wheel
+
+      - name: Verify compiled
+        run: |
+          python -c "
+          import zipfile, glob, struct, os
+          whl = glob.glob('dist/*.whl')[0]
+          with zipfile.ZipFile(whl) as z:
+              so_files = [n for n in z.namelist() if n.endswith('.so')]
+              assert so_files, 'No .so files found'
+              data = z.read(so_files[0])
+              cputype = struct.unpack('<I', data[4:8])[0]
+              arch = 'arm64' if cputype == 0x0100000C else ('x86_64' if cputype == 7 else hex(cputype))
+              print(f'{os.path.basename(whl)} -> {arch}, {len(so_files)} .so files')
+          "
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wheel-cp310-macos-${{ matrix.arch }}
+          path: dist/*.whl
+          if-no-files-found: error
+
+  publish:
+    name: Publish to PyPI
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: wheel-cp310-macos-*
+          merge-multiple: true
+          path: dist
+
+      - name: Show wheels
+        run: ls -lh dist/
+
+      - name: Upload to PyPI
+        run: |
+          pip install twine
+          twine upload dist/*.whl
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
