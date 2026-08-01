@@ -1,3 +1,6 @@
+3.10.11
+- Fixed: force mcp<2.0.0 reinstall on existing installs broken by mcp 2.0.0 upgrade
+
 3.10.10
 - Fixed: pin mcp<2.0.0 to prevent server startup failure (mcp 2.0.0 removed FastMCP)
 - Fixed: passthrough flags (e.g. --dangerously-skip-permissions) now forwarded to gemini, opencode, agy, kilo, and mimo on Windows
