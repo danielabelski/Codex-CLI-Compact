@@ -480,15 +480,15 @@ try {
     # Use Invoke-Native for ALL pip calls  -  Python prints pywin32.pth errors to stderr
     # on startup even after we delete the .pth, and EAP=Stop turns that into a crash.
     Invoke-Native { & $venvPy -m pip install --upgrade pip --quiet } | Out-Null
-    Invoke-Native { & $venvPy -m pip install "mcp>=1.3.0" uvicorn anyio starlette graperoot --quiet --constraint $constraintsFile } | Out-Null
+    Invoke-Native { & $venvPy -m pip install "mcp>=1.3.0,<2.0.0" uvicorn anyio starlette graperoot --quiet --constraint $constraintsFile } | Out-Null
 
     # Verify mcp is importable
     $step = "Verifying MCP import"
-    $checkOut = & "$INSTALL_DIR\venv\Scripts\python.exe" -c "import mcp; print('ok')" 2>$null
+    $checkOut = & "$INSTALL_DIR\venv\Scripts\python.exe" -c "from mcp.server.fastmcp import FastMCP; print('ok')" 2>$null
     if ($checkOut -ne "ok") {
         Write-Host "[install] Warning: mcp import check failed. Retrying with --force-reinstall..."
-        & "$INSTALL_DIR\venv\Scripts\python.exe" -m pip install --force-reinstall "mcp>=1.3.0" uvicorn anyio starlette --quiet
-        $checkOut = & "$INSTALL_DIR\venv\Scripts\python.exe" -c "import mcp; print('ok')" 2>$null
+        & "$INSTALL_DIR\venv\Scripts\python.exe" -m pip install --force-reinstall "mcp>=1.3.0,<2.0.0" uvicorn anyio starlette --quiet
+        $checkOut = & "$INSTALL_DIR\venv\Scripts\python.exe" -c "from mcp.server.fastmcp import FastMCP; print('ok')" 2>$null
         if ($checkOut -ne "ok") {
             # Capture the actual error for telemetry
             $errDetail = & "$INSTALL_DIR\venv\Scripts\python.exe" -c "import mcp" 2>&1 | Out-String

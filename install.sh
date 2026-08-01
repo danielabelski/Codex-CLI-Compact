@@ -284,7 +284,7 @@ echo "[install] Creating Python venv at $VENV ..."
 
 echo "[install] Installing Python dependencies..."
 "$VENV/bin/pip" install --upgrade pip --quiet
-"$VENV/bin/pip" install "mcp>=1.3.0" uvicorn anyio starlette --quiet
+"$VENV/bin/pip" install "mcp>=1.3.0,<2.0.0" uvicorn anyio starlette --quiet
 
 # Add to PATH if not already there
 # On macOS, bash login shells (new terminal windows) read ~/.bash_profile not ~/.bashrc.

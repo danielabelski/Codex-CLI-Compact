@@ -900,19 +900,19 @@ _install_deps() {
 
   # Use uv pip if available (10x faster, no build issues)
   if command -v uv &>/dev/null; then
-    if uv pip install --python "$py_cmd" "mcp>=1.3.0" uvicorn anyio starlette graperoot 2>/dev/null; then
+    if uv pip install --python "$py_cmd" "mcp>=1.3.0,<2.0.0" uvicorn anyio starlette graperoot 2>/dev/null; then
       return 0
     fi
   fi
 
   # Standard pip
-  if "$pip_cmd" install "mcp>=1.3.0" uvicorn anyio starlette graperoot --quiet 2>/tmp/dgc_pip_err.txt; then
+  if "$pip_cmd" install "mcp>=1.3.0,<2.0.0" uvicorn anyio starlette graperoot --quiet 2>/tmp/dgc_pip_err.txt; then
     return 0
   fi
 
   # Retry without cache (fixes corrupted cache issues)
   echo "[$TOOL_LABEL] Retrying pip install with --no-cache-dir..."
-  if "$pip_cmd" install "mcp>=1.3.0" uvicorn anyio starlette graperoot --quiet --no-cache-dir 2>/tmp/dgc_pip_err.txt; then
+  if "$pip_cmd" install "mcp>=1.3.0,<2.0.0" uvicorn anyio starlette graperoot --quiet --no-cache-dir 2>/tmp/dgc_pip_err.txt; then
     return 0
   fi
 
@@ -958,8 +958,8 @@ if [[ ! -x "$VENV_BIN/python3" ]] && [[ ! -x "$VENV_BIN/python" ]]; then
     exit 1
   fi
 
-elif ! "$VENV_BIN/python3" -c "import mcp, uvicorn, anyio, starlette" 2>/dev/null && \
-     ! "$VENV_BIN/python" -c "import mcp, uvicorn, anyio, starlette" 2>/dev/null; then
+elif ! "$VENV_BIN/python3" -c "from mcp.server.fastmcp import FastMCP; import uvicorn, anyio, starlette" 2>/dev/null && \
+     ! "$VENV_BIN/python" -c "from mcp.server.fastmcp import FastMCP; import uvicorn, anyio, starlette" 2>/dev/null; then
   CURRENT_STEP="Preparing Python environment"
   echo "[$TOOL_LABEL] Installing missing Python dependencies..."
   if ! _install_deps "$VENV"; then

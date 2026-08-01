@@ -1,5 +1,7 @@
 3.10.10
+- Fixed: pin mcp<2.0.0 to prevent server startup failure (mcp 2.0.0 removed FastMCP)
 - Fixed: passthrough flags (e.g. --dangerously-skip-permissions) now forwarded to gemini, opencode, agy, kilo, and mimo on Windows
+- Added: SQLite backend for repos with >30k files (reduced RAM usage)
 
 3.10.9
 - Fixed: stop killing other sessions' MCP servers on Windows (concurrent dgc sessions no longer hijack each other)

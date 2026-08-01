@@ -636,11 +636,11 @@ try {
 
         Write-Host "[$Tool] Installing Python dependencies..."
         $pip = Join-Path $venvDir "Scripts\pip.exe"
-        $pipExit = Invoke-NativeQuiet $pip @("install", "mcp>=1.3.0", "uvicorn", "anyio", "starlette", "graperoot", "--quiet")
+        $pipExit = Invoke-NativeQuiet $pip @("install", "mcp>=1.3.0,<2.0.0", "uvicorn", "anyio", "starlette", "graperoot", "--quiet")
         if ($pipExit -ne 0) {
             # Retry without cache
             Write-Host "[$Tool] Retrying pip install..."
-            $pipExit = Invoke-NativeQuiet $pip @("install", "mcp>=1.3.0", "uvicorn", "anyio", "starlette", "graperoot", "--quiet", "--no-cache-dir")
+            $pipExit = Invoke-NativeQuiet $pip @("install", "mcp>=1.3.0,<2.0.0", "uvicorn", "anyio", "starlette", "graperoot", "--quiet", "--no-cache-dir")
         }
         if ($pipExit -ne 0) {
             $msg = "pip install failed (exit $pipExit)"
