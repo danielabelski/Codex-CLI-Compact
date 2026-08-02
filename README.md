@@ -186,6 +186,34 @@ dg /path/to/project             # scan a specific project
 dg /path/to/project "add tests" # start with a prompt
 ```
 
+### MiniMax
+
+Set `MINIMAX_API_KEY`, then select either supported model: `MiniMax-M3` or
+`MiniMax-M2.7`. The `minimax` alias uses `MiniMax-M3`.
+
+```bash
+export MINIMAX_API_KEY="your-api-key"
+dg --model=minimax /path/to/project
+dg --model=minimax-m3 /path/to/project
+dg --model=minimax-m2.7 /path/to/project
+```
+
+`MINIMAX_REGION` selects the endpoint region and defaults to `global_en`.
+`MINIMAX_API_MODE` selects the compatible API mode and defaults to `openai`;
+set it to `anthropic` to use the Anthropic-compatible endpoint. The launcher
+uses a 1,000,000-token context window for `MiniMax-M3` and a 204,800-token
+context window for `MiniMax-M2.7`.
+
+| Region | OpenAI-compatible base URL | Anthropic-compatible base URL |
+|--------|----------------------------|-------------------------------|
+| `global_en` | `https://api.minimax.io/v1` | `https://api.minimax.io/anthropic` |
+| `cn_zh` | `https://api.minimaxi.com/v1` | `https://api.minimaxi.com/anthropic` |
+
+```bash
+MINIMAX_REGION=cn_zh dg --model=minimax-m3 /path/to/project
+MINIMAX_API_MODE=anthropic dgc --model=minimax-m2.7 /path/to/project
+```
+
 ### Interactive Picker (new in v3.9.99)
 
 ```bash
