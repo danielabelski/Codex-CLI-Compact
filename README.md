@@ -2,7 +2,7 @@
 
 <br>
 
-<img src="./assets/graperoot-logo.png" width="140" alt="GrapeRoot">
+<img src="./assets/graperoot-icon.svg" width="80" alt="GrapeRoot">
 
 <br><br>
 
