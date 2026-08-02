@@ -18,7 +18,7 @@
 
 <br>
 
-[**Website**](https://graperoot.dev) · [**Docs**](https://graperoot.dev/docs) · [**Benchmarks**](https://graperoot.dev/benchmarks) · [**Pro**](https://graperoot.dev/graperoot-pro) · [**Discord**](https://discord.com/invite/YwKdQATY2d)
+[**Website**](https://graperoot.dev) · [**Docs**](https://graperoot.dev/docs) · [**Benchmarks**](https://graperoot.dev/benchmarks) · [**Discord**](https://discord.com/invite/YwKdQATY2d)
 
 <br>
 
@@ -311,18 +311,6 @@ graperoot --telemetry       # re-enable
 
 ---
 
-## GrapeRoot Pro
-
-[GrapeRoot Pro](https://graperoot.dev/graperoot-pro) adds advanced features for power users:
-
-- **Exhaustive task mode** — deep multi-file analysis for complex refactors
-- **Dead export detection** — find unused exports across the codebase
-- **Dependency cycle finder** — detect circular import chains
-- **Cross-codebase search** — semantic search across multiple repos
-- **Undo shield** — pre-tool-use hooks that protect destructive operations
-
----
-
 ## Troubleshooting
 
 ### "MCP Server Connection Failed"
@@ -373,7 +361,7 @@ Have a question, found a bug, or want to share feedback?
 
 Launcher scripts and tooling in this repository: [Apache License 2.0](./LICENSE)
 
-The `graperoot` graph engine (PyPI): proprietary. See [graperoot.dev/graperoot-pro](https://graperoot.dev/graperoot-pro).
+The `graperoot` graph engine (PyPI): proprietary. See [graperoot.dev](https://graperoot.dev).
 
 ---
 
