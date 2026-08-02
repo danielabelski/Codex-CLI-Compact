@@ -59,10 +59,12 @@ _show_help() {
     --openclaw     OpenClaw
 
   Options:
-    --resume <id>    Resume a previous claude / codex session
-    --update         Force update to latest version
-    --version, -v    Show version
-    --help, -h, ?    Show this help
+    --resume <id>      Resume a previous claude / codex session
+    --update           Force update to latest version
+    --auto-update      Enable auto-update on every launch (default)
+    --no-auto-update   Disable auto-update (shows notice instead)
+    --version, -v      Show version
+    --help, -h, ?      Show this help
 
   Examples:
     graperoot                          # interactive picker in current dir

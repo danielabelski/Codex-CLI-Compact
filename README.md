@@ -257,6 +257,16 @@ The launcher checks for updates on every run and auto-updates silently. To force
 graperoot --update
 ```
 
+To disable auto-update (shows a notice instead):
+```bash
+graperoot --no-auto-update
+```
+
+To re-enable:
+```bash
+graperoot --auto-update
+```
+
 Current version: **3.10.14**
 
 ---
