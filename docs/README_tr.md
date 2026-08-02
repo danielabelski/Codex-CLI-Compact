@@ -82,6 +82,8 @@ Tam kıyaslama metodolojisi ve sonuçları: [graperoot.dev/benchmarks](https://g
 | OpenCode | `graperoot . --opencode` / `dgo` | ✅ Tam destek |
 | GitHub Copilot | `graperoot . --copilot` | ✅ Tam destek |
 | OpenClaw | `graperoot . --openclaw` | ✅ Tam destek |
+| Kilocode | `graperoot . --kilocode` | ✅ Tam destek |
+| MiMo Code | `graperoot . --mimocode` | ✅ Tam destek |
 | Antigravity | `graperoot . --antigravity` | ✅ Tam destek |
 
 ---
@@ -152,6 +154,8 @@ graperoot . --gemini          # Gemini CLI
 graperoot . --opencode        # OpenCode
 graperoot . --copilot         # GitHub Copilot
 graperoot . --openclaw        # OpenClaw
+graperoot . --kilocode        # Kilocode
+graperoot . --mimocode        # MiMo Code
 graperoot /path --gemini "add tests"   # specific project + prompt
 ```
 
@@ -218,7 +222,28 @@ Başlatıcı her çalıştırmada güncellemeleri kontrol eder ve sessizce otoma
 graperoot --update
 ```
 
-Mevcut sürüm: **3.10.0**
+Otomatik güncellemeyi devre dışı bırakmak için:
+```bash
+graperoot --no-auto-update
+```
+
+Yeniden etkinleştirmek için:
+```bash
+graperoot --auto-update
+```
+
+Mevcut sürüm: **3.10.15**
+
+---
+
+## Telemetri
+
+GrapeRoot, hataları düzeltmeye yardımcı olmak için anonim çökme raporları toplar. Gönderilen bilgiler: hata türü, hangi adımın başarısız olduğu, OS/Python sürümü, GrapeRoot sürümü. Asla gönderilmeyen bilgiler: kodunuz, dosya yolları, proje adları veya kişisel veriler.
+
+```bash
+graperoot --no-telemetry    # disable
+graperoot --telemetry       # re-enable
+```
 
 ---
 

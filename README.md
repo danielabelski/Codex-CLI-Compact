@@ -121,6 +121,8 @@ Full benchmark methodology and results: [graperoot.dev/benchmarks](https://grape
 | OpenCode | `graperoot . --opencode` / `dgo` | ✅ Full support |
 | GitHub Copilot | `graperoot . --copilot` | ✅ Full support |
 | OpenClaw | `graperoot . --openclaw` | ✅ Full support |
+| Kilocode | `graperoot . --kilocode` | ✅ Full support |
+| MiMo Code | `graperoot . --mimocode` | ✅ Full support |
 | Antigravity | `graperoot . --antigravity` | ✅ Full support |
 
 ---
@@ -183,6 +185,14 @@ graperoot --version   # print current version
 graperoot --update    # force self-update
 ```
 
+### OpenCode
+
+```bash
+dgo                             # scan current directory
+dgo /path/to/project            # scan a specific project
+dgo /path/to/project "refactor" # start with a prompt
+```
+
 ### All Tools via `graperoot`
 
 ```bash
@@ -191,6 +201,8 @@ graperoot . --gemini          # Gemini CLI
 graperoot . --opencode        # OpenCode
 graperoot . --copilot         # GitHub Copilot
 graperoot . --openclaw        # OpenClaw
+graperoot . --kilocode        # Kilocode
+graperoot . --mimocode        # MiMo Code
 graperoot /path --gemini "add tests"   # specific project + prompt
 ```
 
@@ -267,7 +279,25 @@ To re-enable:
 graperoot --auto-update
 ```
 
-Current version: **3.10.14**
+Current version: **3.10.15**
+
+---
+
+## Telemetry
+
+GrapeRoot collects **anonymous crash reports** to help us fix bugs. What's sent:
+
+- Error type and which step failed (e.g. "scan", "mcp start")
+- OS and Python version
+- GrapeRoot version
+
+What's **never** sent: your code, file paths, project names, prompts, or any personal data.
+
+Telemetry is on by default. To opt out:
+```bash
+graperoot --no-telemetry    # disable
+graperoot --telemetry       # re-enable
+```
 
 ---
 

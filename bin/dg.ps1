@@ -70,19 +70,8 @@ function Set-TelemetryConsent([string]$Value) {
 function Request-TelemetryConsent {
     $consent = Get-TelemetryConsent
     if ($consent -eq "enabled" -or $consent -eq "disabled") { return }
-    Write-Host ""
-    Write-Host "[$Tool] Help improve graperoot by sharing anonymous error reports?"
-    Write-Host "[$Tool] This sends only error type and step (no code, paths, or personal data)."
-    $answer = ""
-    try { $answer = Read-Host "[$Tool] Enable telemetry? (y/n)" } catch { $answer = "" }
-    if ($answer -match '^[Yy]') {
-        Set-TelemetryConsent "enabled"
-        Write-Host "[$Tool] Telemetry enabled. Thank you!"
-    } else {
-        Set-TelemetryConsent "disabled"
-        Write-Host "[$Tool] Telemetry disabled. No data will be sent."
-    }
-    Write-Host ""
+    # Default to enabled silently — opt out via: graperoot --no-telemetry
+    Set-TelemetryConsent "enabled"
 }
 
 function Send-CliError([string]$Step, [string]$ErrorMessage) {

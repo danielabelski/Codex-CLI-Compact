@@ -63,6 +63,8 @@ _show_help() {
     --update           Force update to latest version
     --auto-update      Enable auto-update on every launch (default)
     --no-auto-update   Disable auto-update (shows notice instead)
+    --telemetry        Enable anonymous error reporting (default)
+    --no-telemetry     Disable all telemetry
     --version, -v      Show version
     --help, -h, ?      Show this help
 
@@ -216,6 +218,32 @@ _set_no_auto_update() {
   echo "[graperoot] Auto-update disabled. Run 'graperoot --update' to update manually."
   exit 0
 }
+_set_telemetry() {
+  python3 - "$SCRIPT_DIR/identity.json" "enabled" <<'PY' 2>/dev/null || true
+import json, sys
+from pathlib import Path
+p = Path(sys.argv[1]); val = sys.argv[2]
+data = json.loads(p.read_text(encoding="utf-8")) if p.exists() else {}
+data["telemetry"] = val
+p.parent.mkdir(parents=True, exist_ok=True)
+p.write_text(json.dumps(data), encoding="utf-8")
+PY
+  echo "[graperoot] Telemetry enabled. Only anonymous error reports are sent."
+  exit 0
+}
+_set_no_telemetry() {
+  python3 - "$SCRIPT_DIR/identity.json" "disabled" <<'PY' 2>/dev/null || true
+import json, sys
+from pathlib import Path
+p = Path(sys.argv[1]); val = sys.argv[2]
+data = json.loads(p.read_text(encoding="utf-8")) if p.exists() else {}
+data["telemetry"] = val
+p.parent.mkdir(parents=True, exist_ok=True)
+p.write_text(json.dumps(data), encoding="utf-8")
+PY
+  echo "[graperoot] Telemetry disabled. No data will be sent."
+  exit 0
+}
 
 # ── Parse arguments ───────────────────────────────────────────────────────────
 for _a in "$@"; do
@@ -225,6 +253,8 @@ for _a in "$@"; do
     --update) _force_update ;;
     --auto-update) _set_auto_update ;;
     --no-auto-update) _set_no_auto_update ;;
+    --telemetry) _set_telemetry ;;
+    --no-telemetry) _set_no_telemetry ;;
   esac
 done
 

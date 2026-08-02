@@ -68,6 +68,26 @@ if ($Arg0 -eq "--no-auto-update") {
     Write-Host "[graperoot] Auto-update disabled. Run 'graperoot --update' to update manually."
     exit 0
 }
+if ($Arg0 -eq "--telemetry") {
+    $DG = Join-Path $env:USERPROFILE ".dual-graph"
+    $idFile = Join-Path $DG "identity.json"
+    $data = @{}
+    if (Test-Path $idFile) { try { $data = Get-Content $idFile -Raw | ConvertFrom-Json -AsHashtable } catch { $data = @{} } }
+    $data["telemetry"] = "enabled"
+    $data | ConvertTo-Json | Set-Content $idFile -Encoding UTF8
+    Write-Host "[graperoot] Telemetry enabled. Only anonymous error reports are sent."
+    exit 0
+}
+if ($Arg0 -eq "--no-telemetry") {
+    $DG = Join-Path $env:USERPROFILE ".dual-graph"
+    $idFile = Join-Path $DG "identity.json"
+    $data = @{}
+    if (Test-Path $idFile) { try { $data = Get-Content $idFile -Raw | ConvertFrom-Json -AsHashtable } catch { $data = @{} } }
+    $data["telemetry"] = "disabled"
+    $data | ConvertTo-Json | Set-Content $idFile -Encoding UTF8
+    Write-Host "[graperoot] Telemetry disabled. No data will be sent."
+    exit 0
+}
 
 # -- Version -------------------------------------------------------------------
 if ($Arg0 -in @("--version","-v")) {

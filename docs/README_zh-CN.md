@@ -82,6 +82,8 @@ token 节省效果会在整个会话中**持续累积**。图谱会记住哪些�
 | OpenCode | `graperoot . --opencode` / `dgo` | ✅ 完整支持 |
 | GitHub Copilot | `graperoot . --copilot` | ✅ 完整支持 |
 | OpenClaw | `graperoot . --openclaw` | ✅ 完整支持 |
+| Kilocode | `graperoot . --kilocode` | ✅ 完整支持 |
+| MiMo Code | `graperoot . --mimocode` | ✅ 完整支持 |
 | Antigravity | `graperoot . --antigravity` | ✅ 完整支持 |
 
 ---
@@ -152,6 +154,8 @@ graperoot . --gemini          # Gemini CLI
 graperoot . --opencode        # OpenCode
 graperoot . --copilot         # GitHub Copilot
 graperoot . --openclaw        # OpenClaw
+graperoot . --kilocode        # Kilocode
+graperoot . --mimocode        # MiMo Code
 graperoot /path --gemini "add tests"   # specific project + prompt
 ```
 
@@ -218,7 +222,28 @@ dgc --gemini "D:\projects\app" # Gemini CLI on Windows
 graperoot --update
 ```
 
-当前版本：**3.10.0**
+禁用自动更新：
+```bash
+graperoot --no-auto-update
+```
+
+重新启用：
+```bash
+graperoot --auto-update
+```
+
+当前版本：**3.10.15**
+
+---
+
+## 遥测
+
+GrapeRoot 收集匿名崩溃报告以帮助修复错误。发送的信息：错误类型、失败的步骤、操作系统/Python 版本、GrapeRoot 版本。绝不发送：您的代码、文件路径、项目名称或个人数据。
+
+```bash
+graperoot --no-telemetry    # disable
+graperoot --telemetry       # re-enable
+```
 
 ---
 

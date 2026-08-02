@@ -82,6 +82,8 @@ Metodologi dan hasil benchmark lengkap: [graperoot.dev/benchmarks](https://grape
 | OpenCode | `graperoot . --opencode` / `dgo` | ✅ Dukungan penuh |
 | GitHub Copilot | `graperoot . --copilot` | ✅ Dukungan penuh |
 | OpenClaw | `graperoot . --openclaw` | ✅ Dukungan penuh |
+| Kilocode | `graperoot . --kilocode` | ✅ Dukungan penuh |
+| MiMo Code | `graperoot . --mimocode` | ✅ Dukungan penuh |
 | Antigravity | `graperoot . --antigravity` | ✅ Dukungan penuh |
 
 ---
@@ -152,6 +154,8 @@ graperoot . --gemini          # Gemini CLI
 graperoot . --opencode        # OpenCode
 graperoot . --copilot         # GitHub Copilot
 graperoot . --openclaw        # OpenClaw
+graperoot . --kilocode        # Kilocode
+graperoot . --mimocode        # MiMo Code
 graperoot /path --gemini "add tests"   # proyek tertentu + prompt
 ```
 
@@ -218,7 +222,28 @@ Peluncur memeriksa pembaruan setiap kali dijalankan dan memperbarui dirinya send
 graperoot --update
 ```
 
-Versi saat ini: **3.10.0**
+Untuk menonaktifkan pembaruan otomatis:
+```bash
+graperoot --no-auto-update
+```
+
+Untuk mengaktifkannya kembali:
+```bash
+graperoot --auto-update
+```
+
+Versi saat ini: **3.10.15**
+
+---
+
+## Telemetri
+
+GrapeRoot mengumpulkan laporan kerusakan anonim untuk membantu memperbaiki bug. Yang dikirim: jenis error, langkah mana yang gagal, versi OS/Python, versi GrapeRoot. Tidak pernah dikirim: kode Anda, jalur file, nama proyek, atau data pribadi.
+
+```bash
+graperoot --no-telemetry    # disable
+graperoot --telemetry       # re-enable
+```
 
 ---
 

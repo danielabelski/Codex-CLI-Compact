@@ -82,6 +82,8 @@ You run: dgc /path/to/project
 | OpenCode | `graperoot . --opencode` / `dgo` | ✅ 完全サポート |
 | GitHub Copilot | `graperoot . --copilot` | ✅ 完全サポート |
 | OpenClaw | `graperoot . --openclaw` | ✅ 完全サポート |
+| Kilocode | `graperoot . --kilocode` | ✅ 完全サポート |
+| MiMo Code | `graperoot . --mimocode` | ✅ 完全サポート |
 | Antigravity | `graperoot . --antigravity` | ✅ 完全サポート |
 
 ---
@@ -152,6 +154,8 @@ graperoot . --gemini          # Gemini CLI
 graperoot . --opencode        # OpenCode
 graperoot . --copilot         # GitHub Copilot
 graperoot . --openclaw        # OpenClaw
+graperoot . --kilocode        # Kilocode
+graperoot . --mimocode        # MiMo Code
 graperoot /path --gemini "add tests"   # specific project + prompt
 ```
 
@@ -218,7 +222,28 @@ dgc --gemini "D:\projects\app" # Gemini CLI on Windows
 graperoot --update
 ```
 
-現在のバージョン：**3.10.0**
+自動アップデートを無効にするには：
+```bash
+graperoot --no-auto-update
+```
+
+再度有効にするには：
+```bash
+graperoot --auto-update
+```
+
+現在のバージョン：**3.10.15**
+
+---
+
+## テレメトリ
+
+GrapeRoot はバグ修正のために匿名のクラッシュレポートを収集します。送信される情報：エラーの種類、失敗したステップ、OS/Pythonバージョン、GrapeRootバージョン。送信されない情報：コード、ファイルパス、プロジェクト名、個人データ。
+
+```bash
+graperoot --no-telemetry    # disable
+graperoot --telemetry       # re-enable
+```
 
 ---
 

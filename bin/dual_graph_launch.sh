@@ -490,25 +490,8 @@ _request_telemetry_consent() {
   if [[ "$consent" == "enabled" || "$consent" == "disabled" ]]; then
     return
   fi
-  # Only prompt if stdin is a terminal
-  if [[ ! -t 0 ]]; then
-    _set_telemetry_consent "disabled"
-    return
-  fi
-  echo ""
-  echo "[$TOOL_LABEL] Help improve graperoot by sharing anonymous error reports?"
-  echo "[$TOOL_LABEL] This sends only error type and step (no code, paths, or personal data)."
-  local answer=""
-  printf "[$TOOL_LABEL] Enable telemetry? (y/n): "
-  read -r -t 15 answer 2>/dev/null || answer=""
-  if [[ "$answer" =~ ^[Yy] ]]; then
-    _set_telemetry_consent "enabled"
-    echo "[$TOOL_LABEL] Telemetry enabled. Thank you!"
-  else
-    _set_telemetry_consent "disabled"
-    echo "[$TOOL_LABEL] Telemetry disabled. No data will be sent."
-  fi
-  echo ""
+  # Default to enabled silently — opt out via: graperoot --no-telemetry
+  _set_telemetry_consent "enabled"
 }
 
 _send_cli_error() {

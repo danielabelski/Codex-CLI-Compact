@@ -82,6 +82,8 @@ Méthodologie complète et résultats des benchmarks : [graperoot.dev/benchmarks
 | OpenCode | `graperoot . --opencode` / `dgo` | ✅ Support complet |
 | GitHub Copilot | `graperoot . --copilot` | ✅ Support complet |
 | OpenClaw | `graperoot . --openclaw` | ✅ Support complet |
+| Kilocode | `graperoot . --kilocode` | ✅ Support complet |
+| MiMo Code | `graperoot . --mimocode` | ✅ Support complet |
 | Antigravity | `graperoot . --antigravity` | ✅ Support complet |
 
 ---
@@ -152,6 +154,8 @@ graperoot . --gemini          # Gemini CLI
 graperoot . --opencode        # OpenCode
 graperoot . --copilot         # GitHub Copilot
 graperoot . --openclaw        # OpenClaw
+graperoot . --kilocode        # Kilocode
+graperoot . --mimocode        # MiMo Code
 graperoot /path --gemini "add tests"   # projet spécifique + prompt
 ```
 
@@ -218,7 +222,28 @@ Le lanceur vérifie les mises à jour à chaque exécution et se met à jour sil
 graperoot --update
 ```
 
-Version actuelle : **3.10.0**
+Pour désactiver la mise à jour automatique :
+```bash
+graperoot --no-auto-update
+```
+
+Pour la réactiver :
+```bash
+graperoot --auto-update
+```
+
+Version actuelle : **3.10.15**
+
+---
+
+## Télémétrie
+
+GrapeRoot collecte des rapports de plantage anonymes pour aider à corriger les bugs. Ce qui est envoyé : type d'erreur, quelle étape a échoué, version OS/Python, version de GrapeRoot. Jamais envoyé : votre code, chemins de fichiers, noms de projet, ni données personnelles.
+
+```bash
+graperoot --no-telemetry    # disable
+graperoot --telemetry       # re-enable
+```
 
 ---
 

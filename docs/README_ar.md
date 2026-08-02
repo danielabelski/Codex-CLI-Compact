@@ -82,6 +82,8 @@ You run: dgc /path/to/project
 | OpenCode | `graperoot . --opencode` / `dgo` | ✅ دعم كامل |
 | GitHub Copilot | `graperoot . --copilot` | ✅ دعم كامل |
 | OpenClaw | `graperoot . --openclaw` | ✅ دعم كامل |
+| Kilocode | `graperoot . --kilocode` | ✅ دعم كامل |
+| MiMo Code | `graperoot . --mimocode` | ✅ دعم كامل |
 | Antigravity | `graperoot . --antigravity` | ✅ دعم كامل |
 
 ---
@@ -152,6 +154,8 @@ graperoot . --gemini          # Gemini CLI
 graperoot . --opencode        # OpenCode
 graperoot . --copilot         # GitHub Copilot
 graperoot . --openclaw        # OpenClaw
+graperoot . --kilocode        # Kilocode
+graperoot . --mimocode        # MiMo Code
 graperoot /path --gemini "add tests"   # specific project + prompt
 ```
 
@@ -218,7 +222,28 @@ dgc --gemini "D:\projects\app" # Gemini CLI on Windows
 graperoot --update
 ```
 
-الإصدار الحالي: **3.10.0**
+لتعطيل التحديث التلقائي:
+```bash
+graperoot --no-auto-update
+```
+
+لإعادة تفعيله:
+```bash
+graperoot --auto-update
+```
+
+الإصدار الحالي: **3.10.15**
+
+---
+
+## القياس عن بعد
+
+يجمع GrapeRoot تقارير أعطال مجهولة الهوية للمساعدة في إصلاح الأخطاء. ما يُرسَل: نوع الخطأ، أي خطوة فشلت، إصدار نظام التشغيل/Python، إصدار GrapeRoot. لا يُرسَل أبدًا: الكود الخاص بك، مسارات الملفات، أسماء المشاريع، أو البيانات الشخصية.
+
+```bash
+graperoot --no-telemetry    # disable
+graperoot --telemetry       # re-enable
+```
 
 ---
 

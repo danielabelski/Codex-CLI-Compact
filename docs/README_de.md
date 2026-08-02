@@ -82,6 +82,8 @@ Vollständige Benchmark-Methodik und Ergebnisse: [graperoot.dev/benchmarks](http
 | OpenCode | `graperoot . --opencode` / `dgo` | ✅ Vollständige Unterstützung |
 | GitHub Copilot | `graperoot . --copilot` | ✅ Vollständige Unterstützung |
 | OpenClaw | `graperoot . --openclaw` | ✅ Vollständige Unterstützung |
+| Kilocode | `graperoot . --kilocode` | ✅ Vollständige Unterstützung |
+| MiMo Code | `graperoot . --mimocode` | ✅ Vollständige Unterstützung |
 | Antigravity | `graperoot . --antigravity` | ✅ Vollständige Unterstützung |
 
 ---
@@ -152,6 +154,8 @@ graperoot . --gemini          # Gemini CLI
 graperoot . --opencode        # OpenCode
 graperoot . --copilot         # GitHub Copilot
 graperoot . --openclaw        # OpenClaw
+graperoot . --kilocode        # Kilocode
+graperoot . --mimocode        # MiMo Code
 graperoot /path --gemini "add tests"   # specific project + prompt
 ```
 
@@ -218,7 +222,28 @@ Das Startprogramm prüft bei jedem Aufruf auf Updates und aktualisiert sich stil
 graperoot --update
 ```
 
-Aktuelle Version: **3.10.0**
+Um die automatische Aktualisierung zu deaktivieren:
+```bash
+graperoot --no-auto-update
+```
+
+Um sie wieder zu aktivieren:
+```bash
+graperoot --auto-update
+```
+
+Aktuelle Version: **3.10.15**
+
+---
+
+## Telemetrie
+
+GrapeRoot sammelt anonyme Absturzberichte, um Fehler zu beheben. Was gesendet wird: Fehlertyp, welcher Schritt fehlschlug, OS/Python-Version, GrapeRoot-Version. Niemals gesendet: Ihr Code, Dateipfade, Projektnamen oder persönliche Daten.
+
+```bash
+graperoot --no-telemetry    # disable
+graperoot --telemetry       # re-enable
+```
 
 ---
 

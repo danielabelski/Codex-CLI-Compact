@@ -82,6 +82,8 @@ Token की बचत पूरे session में **compound** होती 
 | OpenCode | `graperoot . --opencode` / `dgo` | ✅ पूर्ण समर्थन |
 | GitHub Copilot | `graperoot . --copilot` | ✅ पूर्ण समर्थन |
 | OpenClaw | `graperoot . --openclaw` | ✅ पूर्ण समर्थन |
+| Kilocode | `graperoot . --kilocode` | ✅ पूर्ण समर्थन |
+| MiMo Code | `graperoot . --mimocode` | ✅ पूर्ण समर्थन |
 | Antigravity | `graperoot . --antigravity` | ✅ पूर्ण समर्थन |
 
 ---
@@ -152,6 +154,8 @@ graperoot . --gemini          # Gemini CLI
 graperoot . --opencode        # OpenCode
 graperoot . --copilot         # GitHub Copilot
 graperoot . --openclaw        # OpenClaw
+graperoot . --kilocode        # Kilocode
+graperoot . --mimocode        # MiMo Code
 graperoot /path --gemini "add tests"   # खास project + prompt
 ```
 
@@ -218,7 +222,28 @@ Launcher हर बार चलाने पर updates की जांच क
 graperoot --update
 ```
 
-मौजूदा version: **3.10.0**
+Auto-update बंद करने के लिए:
+```bash
+graperoot --no-auto-update
+```
+
+फिर से चालू करने के लिए:
+```bash
+graperoot --auto-update
+```
+
+मौजूदा version: **3.10.15**
+
+---
+
+## टेलीमेट्री
+
+GrapeRoot bugs ठीक करने में मदद के लिए गुमनाम crash reports इकट्ठा करता है। क्या भेजा जाता है: error का प्रकार, कौन सा step fail हुआ, OS/Python version, GrapeRoot version। कभी नहीं भेजा जाता: आपका code, file paths, project names, या व्यक्तिगत डेटा।
+
+```bash
+graperoot --no-telemetry    # disable
+graperoot --telemetry       # re-enable
+```
 
 ---
 

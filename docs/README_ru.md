@@ -82,6 +82,8 @@ GrapeRoot — это open-source **контекстный движок**, кот
 | OpenCode | `graperoot . --opencode` / `dgo` | ✅ Полная поддержка |
 | GitHub Copilot | `graperoot . --copilot` | ✅ Полная поддержка |
 | OpenClaw | `graperoot . --openclaw` | ✅ Полная поддержка |
+| Kilocode | `graperoot . --kilocode` | ✅ Полная поддержка |
+| MiMo Code | `graperoot . --mimocode` | ✅ Полная поддержка |
 | Antigravity | `graperoot . --antigravity` | ✅ Полная поддержка |
 
 ---
@@ -152,6 +154,8 @@ graperoot . --gemini          # Gemini CLI
 graperoot . --opencode        # OpenCode
 graperoot . --copilot         # GitHub Copilot
 graperoot . --openclaw        # OpenClaw
+graperoot . --kilocode        # Kilocode
+graperoot . --mimocode        # MiMo Code
 graperoot /path --gemini "add tests"   # конкретный проект + промпт
 ```
 
@@ -218,7 +222,28 @@ dgc --gemini "D:\projects\app" # Gemini CLI на Windows
 graperoot --update
 ```
 
-Текущая версия: **3.10.0**
+Чтобы отключить автообновление:
+```bash
+graperoot --no-auto-update
+```
+
+Чтобы снова включить:
+```bash
+graperoot --auto-update
+```
+
+Текущая версия: **3.10.15**
+
+---
+
+## Телеметрия
+
+GrapeRoot собирает анонимные отчёты о сбоях для помощи в исправлении ошибок. Что отправляется: тип ошибки, на каком шаге произошёл сбой, версия ОС/Python, версия GrapeRoot. Никогда не отправляется: ваш код, пути к файлам, названия проектов или личные данные.
+
+```bash
+graperoot --no-telemetry    # disable
+graperoot --telemetry       # re-enable
+```
 
 ---
 

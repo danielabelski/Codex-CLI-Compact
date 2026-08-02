@@ -82,6 +82,8 @@ GrapeRoot는 당신과 AI 코딩 어시스턴트 사이에 위치하는 오픈�
 | OpenCode | `graperoot . --opencode` / `dgo` | ✅ 전체 지원 |
 | GitHub Copilot | `graperoot . --copilot` | ✅ 전체 지원 |
 | OpenClaw | `graperoot . --openclaw` | ✅ 전체 지원 |
+| Kilocode | `graperoot . --kilocode` | ✅ 전체 지원 |
+| MiMo Code | `graperoot . --mimocode` | ✅ 전체 지원 |
 | Antigravity | `graperoot . --antigravity` | ✅ 전체 지원 |
 
 ---
@@ -152,6 +154,8 @@ graperoot . --gemini          # Gemini CLI
 graperoot . --opencode        # OpenCode
 graperoot . --copilot         # GitHub Copilot
 graperoot . --openclaw        # OpenClaw
+graperoot . --kilocode        # Kilocode
+graperoot . --mimocode        # MiMo Code
 graperoot /path --gemini "add tests"   # 특정 프로젝트 + 프롬프트
 ```
 
@@ -218,7 +222,28 @@ dgc --gemini "D:\projects\app" # Windows에서 Gemini CLI
 graperoot --update
 ```
 
-현재 버전: **3.10.0**
+자동 업데이트를 비활성화하려면:
+```bash
+graperoot --no-auto-update
+```
+
+다시 활성화하려면:
+```bash
+graperoot --auto-update
+```
+
+현재 버전: **3.10.15**
+
+---
+
+## 텔레메트리
+
+GrapeRoot는 버그 수정을 돕기 위해 익명의 충돌 보고서를 수집합니다. 전송되는 정보: 오류 유형, 실패한 단계, OS/Python 버전, GrapeRoot 버전. 절대 전송되지 않는 정보: 코드, 파일 경로, 프로젝트 이름, 개인 데이터.
+
+```bash
+graperoot --no-telemetry    # disable
+graperoot --telemetry       # re-enable
+```
 
 ---
 
