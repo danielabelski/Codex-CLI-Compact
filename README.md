@@ -1,20 +1,34 @@
 <div align="center">
 
-```
- ▄▀▀▀ █▀▀▄ ▄▀▀▄ █▀▀█ █▀▀▀ █▀▀▄ ▄▀▀▄ ▄▀▀▄ ▀█▀
- █ ▀▄ █▄▄▀ █▄▄█ █▄▄█ █▀▀  █▄▄▀ █  █ █  █  █
- ▀▀▀▀ ▀ ▀▀ ▀  ▀ █    ▀▀▀▀ ▀ ▀▀ ▀▀▀▀ ▀▀▀▀  ▀
-```
+<br>
 
-### Compounding Context for AI Coding Assistants
+<img src="./assets/graperoot-logo.png" width="140" alt="GrapeRoot">
 
-**[graperoot.dev](https://graperoot.dev)** · [Docs](https://graperoot.dev/docs) · [Benchmarks](https://graperoot.dev/benchmarks) · [Pro](https://graperoot.dev/graperoot-pro) · [Discord](https://discord.com/invite/YwKdQATY2d)
+<br><br>
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="./assets/graperoot-wordmark-light.svg">
+  <source media="(prefers-color-scheme: light)" srcset="./assets/graperoot-wordmark.svg">
+  <img src="./assets/graperoot-wordmark.svg" width="275" alt="GRAPEROOT">
+</picture>
+
+<br><br>
+
+**Compounding Context for AI Coding Assistants**
+
+<br>
 
 [![PyPI](https://img.shields.io/pypi/v/graperoot?label=version&color=brightgreen)](https://pypi.org/project/graperoot/)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue)](./LICENSE)
 [![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows-lightgrey)](#install)
 [![Discord](https://img.shields.io/badge/Discord-community-5865F2?logo=discord&logoColor=white)](https://discord.com/invite/YwKdQATY2d)
 [![Stars](https://img.shields.io/github/stars/kunal12203/Codex-CLI-Compact?style=social)](https://github.com/kunal12203/Codex-CLI-Compact/stargazers)
+
+<br>
+
+[**Website**](https://graperoot.dev) · [**Docs**](https://graperoot.dev/docs) · [**Benchmarks**](https://graperoot.dev/benchmarks) · [**Pro**](https://graperoot.dev/graperoot-pro) · [**Discord**](https://discord.com/invite/YwKdQATY2d)
+
+<br>
 
 ---
 
