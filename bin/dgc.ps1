@@ -745,11 +745,13 @@ try {
     }
 
     # Ensure mcp<2.0.0 — mcp 2.0.0 removed FastMCP and causes handshake failure
-    $mcpVer = & $Python -c "import mcp; print(mcp.__version__)" 2>$null
-    if ($mcpVer -and ([version]$mcpVer -ge [version]"2.0.0")) {
-        Write-Host "[$Tool] mcp $mcpVer detected (incompatible) -- reinstalling mcp<2.0.0..."
-        Invoke-NativeQuiet $pip @("install", "mcp>=1.3.0,<2.0.0", "--quiet", "--force-reinstall") | Out-Null
-    }
+    try {
+        $mcpVer = (& $Python -c "import mcp; print(mcp.__version__)" 2>$null)
+        if ($mcpVer -and ([version]$mcpVer -ge [version]"2.0.0")) {
+            Write-Host "[$Tool] mcp $mcpVer detected (incompatible) -- reinstalling mcp<2.0.0..."
+            Invoke-NativeQuiet $pip @("install", "mcp>=1.3.0,<2.0.0", "--quiet", "--force-reinstall") | Out-Null
+        }
+    } catch {}
 
     # ripgrep (rg) is required by the fallback_rg MCP tool  -  install if missing
     try {
