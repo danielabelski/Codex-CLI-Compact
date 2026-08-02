@@ -1,0 +1,272 @@
+#!/usr/bin/env bash
+# dgo — Dual-Graph launcher for opencode
+#
+# Usage:
+#   dgo                          # scan current directory, start opencode
+#   dgo /path/to/project         # scan given project, start opencode
+#   dgo /path/to/project "task"  # scan and start with a message
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+VENV="$SCRIPT_DIR/venv"
+
+if [[ "$OSTYPE" == msys* || "$OSTYPE" == cygwin* || "$OSTYPE" == win32* ]]; then
+  VENV_BIN="$VENV/Scripts"
+else
+  VENV_BIN="$VENV/bin"
+fi
+
+PROJECT="${1:-$(pwd)}"
+PROJECT="$(cd "$PROJECT" && pwd)"
+PROMPT="${2:-}"
+DATA_DIR="$PROJECT/.dual-graph"
+TOOL_LABEL="dgo"
+
+_BANNER_VER="$(cat "$SCRIPT_DIR/version.txt" 2>/dev/null || echo "0")"
+_UTF8=false
+case "${LANG:-}${LC_ALL:-}${LC_CTYPE:-}" in *[Uu][Tt][Ff]*8*|*utf8*) _UTF8=true ;; esac
+[[ "$TERM_PROGRAM" == "Apple_Terminal" || "$TERM_PROGRAM" == "iTerm"* || -n "${WT_SESSION:-}" ]] && _UTF8=true
+echo ""
+if $_UTF8; then
+  printf "  \033[92m ▄▀▀▀ █▀▀▄ ▄▀▀▄ █▀▀█ █▀▀▀ █▀▀▄ ▄▀▀▄ ▄▀▀▄ ▀█▀\033[0m\n"
+  printf "  \033[92m █ ▀▄ █▄▄▀ █▄▄█ █▄▄█ █▀▀  █▄▄▀ █  █ █  █  █\033[0m\n"
+  printf "  \033[92m ▀▀▀▀ ▀ ▀▀ ▀  ▀ █    ▀▀▀▀ ▀ ▀▀ ▀▀▀▀ ▀▀▀▀  ▀\033[0m   \033[1mv$_BANNER_VER\033[0m\n"
+  printf "  \033[32m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m\n"
+else
+  printf "  \033[92mGRAPEROOT\033[0m  \033[1mv$_BANNER_VER\033[0m\n"
+  printf "  \033[32m---------------------------------------------------------\033[0m\n"
+fi
+printf "  %s\n" "$PROJECT"
+echo ""
+if $_UTF8; then
+  echo "  ❤️  GrapeRoot is free. A GitHub ⭐ is all we ask — it keeps us going."
+else
+  echo "  GrapeRoot is free. A GitHub star is all we ask -- it keeps us going."
+fi
+echo "     https://github.com/kunal12203/GrapeRoot | support@graperoot.dev | discord.com/invite/YwKdQATY2d"
+echo ""
+
+# ── Verify opencode is installed ─────────────────────────────────────────────
+if ! command -v opencode &>/dev/null; then
+  echo "[$TOOL_LABEL] ERROR: opencode not found in PATH."
+  echo "[$TOOL_LABEL] Install: curl -fsSL https://opencode.ai/install.sh | bash"
+  exit 1
+fi
+
+# ── Python / venv ─────────────────────────────────────────────────────────────
+if [[ ! -x "$VENV_BIN/python3" ]] && [[ ! -x "$VENV_BIN/python" ]]; then
+  echo "[$TOOL_LABEL] No venv found at $VENV — please run dgc first to set up the environment."
+  exit 1
+fi
+
+if [[ -x "$VENV_BIN/python3" ]]; then
+  PYTHON="$VENV_BIN/python3"
+else
+  PYTHON="$VENV_BIN/python"
+fi
+
+# ── MCP server binary ─────────────────────────────────────────────────────────
+if [[ -x "$VENV_BIN/mcp-graph-server" ]]; then
+  MCP_CMD=("$VENV_BIN/mcp-graph-server")
+elif [[ -f "$SCRIPT_DIR/mcp_graph_server.py" ]]; then
+  MCP_CMD=("$PYTHON" "$SCRIPT_DIR/mcp_graph_server.py")
+else
+  echo "[$TOOL_LABEL] ERROR: mcp-graph-server not found. Run dgc in any project first."
+  exit 1
+fi
+
+# ── Graph builder ─────────────────────────────────────────────────────────────
+if [[ -x "$VENV_BIN/graph-builder" ]]; then
+  GRAPH_CMD=("$VENV_BIN/graph-builder")
+elif [[ -f "$SCRIPT_DIR/graph_builder.py" ]]; then
+  GRAPH_CMD=("$PYTHON" "$SCRIPT_DIR/graph_builder.py")
+else
+  echo "[$TOOL_LABEL] ERROR: graph-builder not found. Run dgc in any project first."
+  exit 1
+fi
+
+mkdir -p "$DATA_DIR"
+
+# ── .gitignore entry ──────────────────────────────────────────────────────────
+if [[ -f "$PROJECT/.gitignore" ]] && ! grep -qx '.dual-graph/' "$PROJECT/.gitignore" 2>/dev/null; then
+  echo '.dual-graph/' >> "$PROJECT/.gitignore"
+fi
+
+# ── Build graph ───────────────────────────────────────────────────────────────
+echo "[$TOOL_LABEL] Scanning project..."
+DG_DATA_DIR="$DATA_DIR" \
+DUAL_GRAPH_PROJECT_ROOT="$PROJECT" \
+  "${GRAPH_CMD[@]}" --out "$DATA_DIR/info_graph.json" \
+  2>/dev/null || echo "[$TOOL_LABEL] Warning: graph scan had errors (continuing)"
+echo "[$TOOL_LABEL] Scan complete."
+_GRAPH_STATS="$("$PYTHON" -c "
+import json, sys
+try:
+    g = json.load(open(sys.argv[1]))
+    print(f\"{g.get('file_count',0)} files, {g.get('symbol_count',0)} symbols, {g.get('node_count',0)} nodes, {g.get('edge_count',0)} edges\")
+except: pass
+" "$DATA_DIR/info_graph.json" 2>/dev/null)"
+if [[ -n "$_GRAPH_STATS" ]]; then
+  printf "  \033[92m⬡\033[0m $_GRAPH_STATS\n"
+fi
+
+# ── Find free port ────────────────────────────────────────────────────────────
+MCP_PORT=8080
+while python3 -c "
+import socket, sys
+s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+try:
+    s.bind(('0.0.0.0', int(sys.argv[1])))
+    s.close()
+    sys.exit(1)
+except OSError:
+    sys.exit(0)
+" "$MCP_PORT" 2>/dev/null; do
+  MCP_PORT=$((MCP_PORT + 1))
+  if [[ $MCP_PORT -gt 8199 ]]; then
+    echo "[$TOOL_LABEL] ERROR: no free port in 8080-8199"
+    exit 1
+  fi
+done
+
+# ── Start MCP server ──────────────────────────────────────────────────────────
+echo "[$TOOL_LABEL] Starting MCP server on port $MCP_PORT..."
+
+DG_DATA_DIR="$DATA_DIR" \
+DUAL_GRAPH_PROJECT_ROOT="$PROJECT" \
+DG_BASE_URL="http://127.0.0.1:$MCP_PORT" \
+PORT="$MCP_PORT" \
+  "${MCP_CMD[@]}" >> "$DATA_DIR/mcp_server.log" 2>&1 &
+MCP_PID=$!
+echo "$MCP_PID" > "$DATA_DIR/mcp_server.pid"
+
+# Wait for server to be ready
+MCP_READY=0
+for _i in $(seq 1 30); do
+  sleep 0.5
+  if ! kill -0 "$MCP_PID" 2>/dev/null; then
+    echo "[$TOOL_LABEL] ERROR: MCP server crashed (check $DATA_DIR/mcp_server.log)"
+    break
+  fi
+  if python3 -c "
+import socket, sys
+s = socket.socket()
+s.settimeout(1)
+try:
+    s.connect(('127.0.0.1', int(sys.argv[1])))
+    s.close()
+    sys.exit(0)
+except:
+    sys.exit(1)
+" "$MCP_PORT" 2>/dev/null; then
+    MCP_READY=1
+    break
+  fi
+done
+
+if [[ "$MCP_READY" == "0" ]]; then
+  echo "[$TOOL_LABEL] WARNING: MCP server not responding — launching without MCP"
+  kill "$MCP_PID" 2>/dev/null || true
+  rm -f "$DATA_DIR/mcp_server.pid"
+  # Launch opencode without MCP config
+  if [[ -n "$PROMPT" ]]; then
+    exec opencode run --dir "$PROJECT" "$PROMPT"
+  else
+    exec opencode "$PROJECT"
+  fi
+fi
+
+# ── Write opencode.json with MCP config ──────────────────────────────────────
+OPENCODE_JSON="$PROJECT/opencode.json"
+_EXISTING_OPENCODE_JSON=""
+if [[ -f "$OPENCODE_JSON" ]]; then
+  _EXISTING_OPENCODE_JSON="$(cat "$OPENCODE_JSON")"
+fi
+
+python3 - "$OPENCODE_JSON" "$MCP_PORT" << 'PY'
+import json, sys
+path, port = sys.argv[1], int(sys.argv[2])
+
+# Read existing config to merge (preserve user's existing settings)
+try:
+    existing = json.loads(open(path).read())
+except Exception:
+    existing = {}
+
+existing.setdefault("mcp", {})
+existing["mcp"]["dual-graph"] = {
+    "type": "remote",
+    "url": f"http://127.0.0.1:{port}/mcp",
+}
+open(path, "w").write(json.dumps(existing, indent=2))
+PY
+
+echo "[$TOOL_LABEL] MCP server ready (pid=$MCP_PID)"
+echo "[$TOOL_LABEL] opencode.json updated with dual-graph MCP"
+echo ""
+
+# ── Write AGENTS.md policy ────────────────────────────────────────────────────
+AGENTS_MD="$PROJECT/AGENTS.md"
+if [[ ! -f "$AGENTS_MD" ]]; then
+  cat > "$AGENTS_MD" << 'MD'
+# Dual-Graph Context Policy
+
+This project uses a local dual-graph MCP server for efficient context retrieval.
+
+## MANDATORY: Always follow this order
+
+1. **Call `graph_continue` first** — before any file exploration, grep, or code reading.
+
+2. **If `graph_continue` returns `needs_project=true`**: call `graph_scan` with the
+   current project directory. Do NOT ask the user.
+
+3. **If `graph_continue` returns `skip=true`**: project has fewer than 5 files.
+   Do NOT do broad or recursive exploration.
+
+4. **Read `recommended_files`** using `graph_read` — **one call per file**.
+
+5. **Check `confidence` and obey the caps strictly:**
+   - `confidence=high` -> Stop. Do NOT grep or explore further.
+   - `confidence=medium` -> `fallback_rg` at most `max_supplementary_greps` time(s),
+     then `graph_read` at most `max_supplementary_files` file(s). Then stop.
+   - `confidence=low` -> `fallback_rg` at most `max_supplementary_greps` time(s),
+     then `graph_read` at most `max_supplementary_files` file(s). Then stop.
+
+## Rules
+- Do NOT use `rg`, `grep`, or bash file exploration before calling `graph_continue`.
+- Do NOT do broad/recursive exploration at any confidence level.
+- Hard caps: never exceed `max_supplementary_greps` / `max_supplementary_files`.
+- After edits, call `graph_register_edit` with the changed files.
+MD
+fi
+
+# ── Cleanup on exit ───────────────────────────────────────────────────────────
+_cleanup() {
+  echo ""
+  echo "[$TOOL_LABEL] Stopping MCP server..."
+  kill "$MCP_PID" 2>/dev/null || true
+  rm -f "$DATA_DIR/mcp_server.pid"
+
+  # Restore opencode.json to previous state
+  if [[ -z "$_EXISTING_OPENCODE_JSON" ]]; then
+    rm -f "$OPENCODE_JSON"
+    echo "[$TOOL_LABEL] Removed opencode.json (was not present before)"
+  else
+    echo "$_EXISTING_OPENCODE_JSON" > "$OPENCODE_JSON"
+    echo "[$TOOL_LABEL] Restored original opencode.json"
+  fi
+  echo "[$TOOL_LABEL] Done."
+}
+trap _cleanup EXIT INT TERM
+
+# ── Launch opencode ───────────────────────────────────────────────────────────
+echo "[$TOOL_LABEL] Launching opencode..."
+echo ""
+
+if [[ -n "$PROMPT" ]]; then
+  opencode run --dir "$PROJECT" "$PROMPT"
+else
+  opencode "$PROJECT"
+fi

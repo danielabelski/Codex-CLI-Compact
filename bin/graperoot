@@ -203,12 +203,26 @@ _interactive_picker() {
   ASSISTANT="${tool_keys[$selected]}"
 }
 
+# ── Auto-update preference ────────────────────────────────────────────────────
+_set_auto_update() {
+  rm -f "$SCRIPT_DIR/no_auto_update" 2>/dev/null || true
+  echo "[graperoot] Auto-update enabled. GrapeRoot will update on every launch."
+  exit 0
+}
+_set_no_auto_update() {
+  touch "$SCRIPT_DIR/no_auto_update" 2>/dev/null || true
+  echo "[graperoot] Auto-update disabled. Run 'graperoot --update' to update manually."
+  exit 0
+}
+
 # ── Parse arguments ───────────────────────────────────────────────────────────
 for _a in "$@"; do
   case "$_a" in
     --help|-h|\?) _show_help ;;
     --version|-v) _show_version ;;
     --update) _force_update ;;
+    --auto-update) _set_auto_update ;;
+    --no-auto-update) _set_no_auto_update ;;
   esac
 done
 

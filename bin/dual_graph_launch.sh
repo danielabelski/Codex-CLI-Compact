@@ -379,47 +379,28 @@ _normalize_toolname() {
 RUNTIME_TOOLNAME="$(_normalize_toolname "$RUNTIME_TOOLNAME_RAW")"
 export DG_TOOLNAME="$RUNTIME_TOOLNAME"
 
+_BANNER_VER="$(cat "$SCRIPT_DIR/version.txt" 2>/dev/null || echo "0")"
+_UTF8=false
+case "${LANG:-}${LC_ALL:-}${LC_CTYPE:-}" in *[Uu][Tt][Ff]*8*|*utf8*) _UTF8=true ;; esac
+[[ "$TERM_PROGRAM" == "Apple_Terminal" || "$TERM_PROGRAM" == "iTerm"* || -n "${WT_SESSION:-}" ]] && _UTF8=true
 echo ""
-echo "[$TOOL_LABEL] If you receive any errors:"
-case "$ASSISTANT" in
-  codex)
-    echo "[$TOOL_LABEL]   1. Wait 5 minutes and run dg again"
-    echo "[$TOOL_LABEL]   2. Update Codex: npm install -g @openai/codex"
-    ;;
-  claude)
-    echo "[$TOOL_LABEL]   1. Wait 5 minutes and run dgc again"
-    echo "[$TOOL_LABEL]   2. Update Claude Code: npm install -g @anthropic-ai/claude-code"
-    ;;
-  cursor)
-    echo "[$TOOL_LABEL]   1. Wait 5 minutes and run graperoot again"
-    echo "[$TOOL_LABEL]   2. Reinstall Cursor: https://www.cursor.com"
-    ;;
-  gemini)
-    echo "[$TOOL_LABEL]   1. Wait 5 minutes and run graperoot again"
-    echo "[$TOOL_LABEL]   2. Update Gemini CLI: npm install -g @google/generative-ai"
-    ;;
-  opencode)
-    echo "[$TOOL_LABEL]   1. Wait 5 minutes and run graperoot again"
-    echo "[$TOOL_LABEL]   2. Install OpenCode: npm install -g opencode-ai"
-    ;;
-  copilot)
-    echo "[$TOOL_LABEL]   1. Wait 5 minutes and run graperoot again"
-    echo "[$TOOL_LABEL]   2. Ensure VS Code is installed: https://code.visualstudio.com"
-    ;;
-  antigravity)
-    echo "[$TOOL_LABEL]   1. Wait 5 minutes and run graperoot again"
-    echo "[$TOOL_LABEL]   2. Install Antigravity: curl -fsSL https://antigravity.google/cli/install.sh | bash"
-    ;;
-  openclaw)
-    echo "[$TOOL_LABEL]   1. Wait 5 minutes and run graperoot again"
-    echo "[$TOOL_LABEL]   2. Install OpenClaw: npm install -g openclaw@latest"
-    ;;
-esac
-echo "[$TOOL_LABEL]   3. Join Discord for help: https://discord.com/invite/YwKdQATY2d"
+if $_UTF8; then
+  printf "  \033[92m ▄▀▀▀ █▀▀▄ ▄▀▀▄ █▀▀█ █▀▀▀ █▀▀▄ ▄▀▀▄ ▄▀▀▄ ▀█▀\033[0m\n"
+  printf "  \033[92m █ ▀▄ █▄▄▀ █▄▄█ █▄▄█ █▀▀  █▄▄▀ █  █ █  █  █\033[0m\n"
+  printf "  \033[92m ▀▀▀▀ ▀ ▀▀ ▀  ▀ █    ▀▀▀▀ ▀ ▀▀ ▀▀▀▀ ▀▀▀▀  ▀\033[0m   \033[1mv$_BANNER_VER\033[0m\n"
+  printf "  \033[32m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m\n"
+else
+  printf "  \033[92mGRAPEROOT\033[0m  \033[1mv$_BANNER_VER\033[0m\n"
+  printf "  \033[32m---------------------------------------------------------\033[0m\n"
+fi
+printf "  %s\n" "$PROJECT"
 echo ""
-echo "[$TOOL_LABEL] Enjoying Graperoot? Graperoot Pro is live — 7-day free trial, Claude Code only."
-echo "[$TOOL_LABEL]   https://graperoot.dev/pricing  |  feedback: support.graperoot.dev or Discord"
-echo "[$TOOL_LABEL]   (this banner goes away next update)"
+if $_UTF8; then
+  echo "  ❤️  GrapeRoot is free. A GitHub ⭐ is all we ask — it keeps us going."
+else
+  echo "  GrapeRoot is free. A GitHub star is all we ask -- it keeps us going."
+fi
+echo "     https://github.com/kunal12203/GrapeRoot | support@graperoot.dev | discord.com/invite/YwKdQATY2d"
 echo ""
 
 _platform_name() {
@@ -666,38 +647,28 @@ _REMOTE_VER="$(
 )"
 _NOTICE_FILE="$SCRIPT_DIR/last_update_notice.txt"
 
+_NO_AUTO_UPDATE_FILE="$SCRIPT_DIR/no_auto_update"
+
 if [[ -n "$_REMOTE_VER" ]] && _version_gt "$_REMOTE_VER" "$_LOCAL_VER"; then
-  _LAST_NOTICE_VER="$(cat "$_NOTICE_FILE" 2>/dev/null || echo "")"
-  if [[ "$_LAST_NOTICE_VER" != "$_REMOTE_VER" ]]; then
-    if [[ "$OSTYPE" == "darwin"* ]]; then
-      echo "[$TOOL_LABEL] New version ($_LOCAL_VER -> $_REMOTE_VER) available. To refresh launcher files run:"
-      echo "[$TOOL_LABEL]   curl -sSL https://raw.githubusercontent.com/kunal12203/Codex-CLI-Compact/main/install.sh | bash"
-    else
-      echo "[$TOOL_LABEL] New version ($_LOCAL_VER -> $_REMOTE_VER) available. To refresh launcher files run:"
-      echo "[$TOOL_LABEL]   curl -sSL https://raw.githubusercontent.com/kunal12203/Codex-CLI-Compact/main/install.sh | bash"
+  if [[ -f "$_NO_AUTO_UPDATE_FILE" ]]; then
+    printf "  \033[33m⬆ Update available: $_LOCAL_VER → $_REMOTE_VER\033[0m  Run: \033[1mgraperoot --update\033[0m\n"
+  else
+    echo "[$TOOL_LABEL] Updating ($_LOCAL_VER → $_REMOTE_VER)..."
+    curl -fsSL --max-time 30 "$_BASE_URL/bin/dual_graph_launch.sh" -o "$SCRIPT_DIR/dual_graph_launch.sh" \
+      || curl -fsSL --max-time 30 "$_R2/dual_graph_launch.sh" -o "$SCRIPT_DIR/dual_graph_launch.sh"
+    chmod +x "$SCRIPT_DIR/dual_graph_launch.sh"
+    curl -fsSL --max-time 15 "$_BASE_URL/bin/graperoot" -o "$SCRIPT_DIR/graperoot" 2>/dev/null \
+      && chmod +x "$SCRIPT_DIR/graperoot" || true
+    curl -fsSL --max-time 15 "$_BASE_URL/bin/graperoot.cmd" -o "$SCRIPT_DIR/graperoot.cmd" 2>/dev/null || true
+    curl -fsSL --max-time 15 "$_BASE_URL/bin/graperoot.ps1" -o "$SCRIPT_DIR/graperoot.ps1" 2>/dev/null || true
+    echo "$_REMOTE_VER" > "$SCRIPT_DIR/version.txt"
+    if [[ -x "$VENV_BIN/pip" ]]; then
+      "$VENV_BIN/pip" install graperoot --upgrade --quiet 2>/dev/null || true
     fi
-    echo "$_REMOTE_VER" > "$_NOTICE_FILE" 2>/dev/null || true
-  fi
-  echo "[$TOOL_LABEL] Update available ($_LOCAL_VER → $_REMOTE_VER) — updating..."
-  curl -fsSL --max-time 30 "$_BASE_URL/bin/dual_graph_launch.sh" -o "$SCRIPT_DIR/dual_graph_launch.sh" \
-    || curl -fsSL --max-time 30 "$_R2/dual_graph_launch.sh" -o "$SCRIPT_DIR/dual_graph_launch.sh"
-  chmod +x "$SCRIPT_DIR/dual_graph_launch.sh"
-  # Also update graperoot (new unified launcher) + Windows files
-  curl -fsSL --max-time 15 "$_BASE_URL/bin/graperoot" -o "$SCRIPT_DIR/graperoot" 2>/dev/null \
-    && chmod +x "$SCRIPT_DIR/graperoot" || true
-  curl -fsSL --max-time 15 "$_BASE_URL/bin/graperoot.cmd" -o "$SCRIPT_DIR/graperoot.cmd" 2>/dev/null || true
-  curl -fsSL --max-time 15 "$_BASE_URL/bin/graperoot.ps1" -o "$SCRIPT_DIR/graperoot.ps1" 2>/dev/null || true
-  # audit + undo_shield now ship inside the graperoot pip package — upgraded below
-  echo "$_REMOTE_VER" > "$SCRIPT_DIR/version.txt"
-  # Upgrade graperoot so venv gets latest mcp_graph_server + compiled modules
-  if [[ -x "$VENV_BIN/pip" ]]; then
-    "$VENV_BIN/pip" install graperoot --upgrade --quiet 2>/dev/null || true
-  fi
-  # Show changelog for new version (max 3 lines)
-  _CHANGELOG="$(curl -sf --max-time 5 "$_BASE_URL/bin/changelog.txt" 2>/dev/null \
-    || curl -sf --max-time 5 "$_R2/changelog.txt" 2>/dev/null || true)"
-  if [[ -n "$_CHANGELOG" ]]; then
-    _NOTES="$(echo "$_CHANGELOG" | python3 -c "
+    _CHANGELOG="$(curl -sf --max-time 5 "$_BASE_URL/bin/changelog.txt" 2>/dev/null \
+      || curl -sf --max-time 5 "$_R2/changelog.txt" 2>/dev/null || true)"
+    if [[ -n "$_CHANGELOG" ]]; then
+      _NOTES="$(echo "$_CHANGELOG" | python3 -c "
 import sys
 lines = sys.stdin.read().splitlines()
 ver = None
@@ -712,18 +683,19 @@ for line in lines:
         if len(notes) == 3: break
 for n in notes: print(n)
 " 2>/dev/null || true)"
-    if [[ -n "$_NOTES" ]]; then
-      echo "[$TOOL_LABEL] What's new in $_REMOTE_VER:"
-      while IFS= read -r _note; do
-        echo "[$TOOL_LABEL]   $_note"
-      done <<< "$_NOTES"
+      if [[ -n "$_NOTES" ]]; then
+        echo "[$TOOL_LABEL] What's new in $_REMOTE_VER:"
+        while IFS= read -r _note; do
+          echo "[$TOOL_LABEL]   $_note"
+        done <<< "$_NOTES"
+      fi
     fi
+    echo "[$TOOL_LABEL] Updated to $_REMOTE_VER. Restarting..."
+    EXEC_ARGS=("$SCRIPT_DIR/dual_graph_launch.sh" "$ASSISTANT" "$PROJECT")
+    [[ -n "$PROMPT" ]] && EXEC_ARGS+=("$PROMPT")
+    [[ ${#CLAUDE_EXTRA_ARGS[@]} -gt 0 ]] && EXEC_ARGS+=("${CLAUDE_EXTRA_ARGS[@]}")
+    exec "${EXEC_ARGS[@]}"
   fi
-  echo "[$TOOL_LABEL] Updated to $_REMOTE_VER. Restarting..."
-  EXEC_ARGS=("$SCRIPT_DIR/dual_graph_launch.sh" "$ASSISTANT" "$PROJECT")
-  [[ -n "$PROMPT" ]] && EXEC_ARGS+=("$PROMPT")
-  [[ ${#CLAUDE_EXTRA_ARGS[@]} -gt 0 ]] && EXEC_ARGS+=("${CLAUDE_EXTRA_ARGS[@]}")
-  exec "${EXEC_ARGS[@]}"
 elif [[ -n "$_REMOTE_VER" && "$_REMOTE_VER" != "$_LOCAL_VER" ]]; then
   echo "[$TOOL_LABEL] Local version ($_LOCAL_VER) is newer than remote ($_REMOTE_VER); skipping downgrade."
 fi
@@ -1586,7 +1558,17 @@ if [[ "$_SCAN_OK" != "1" ]]; then
   exit 1
 fi
 rm -f "$_SCAN_ERR_FILE" 2>/dev/null || true
+_GRAPH_STATS="$("$PYTHON" -c "
+import json, sys
+try:
+    g = json.load(open(sys.argv[1]))
+    print(f\"{g.get('file_count',0)} files, {g.get('symbol_count',0)} symbols, {g.get('node_count',0)} nodes, {g.get('edge_count',0)} edges\")
+except: pass
+" "$DATA_DIR/info_graph.json" 2>/dev/null)"
 echo "[$TOOL_LABEL] Scan complete."
+if [[ -n "$_GRAPH_STATS" ]]; then
+  printf "  \033[92m⬡\033[0m $_GRAPH_STATS\n"
+fi
 echo ""
 
 # HTTP server is always started — used by prime.sh hooks and non-Claude assistants.

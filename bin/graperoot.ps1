@@ -53,6 +53,22 @@ function Write-PolicyBlock {
     }
 }
 
+# -- Auto-update preference ----------------------------------------------------
+if ($Arg0 -eq "--auto-update") {
+    $DG = Join-Path $env:USERPROFILE ".dual-graph"
+    $flagFile = Join-Path $DG "no_auto_update"
+    if (Test-Path $flagFile) { Remove-Item $flagFile -Force -ErrorAction SilentlyContinue }
+    Write-Host "[graperoot] Auto-update enabled. GrapeRoot will update on every launch."
+    exit 0
+}
+if ($Arg0 -eq "--no-auto-update") {
+    $DG = Join-Path $env:USERPROFILE ".dual-graph"
+    New-Item -ItemType Directory -Force -Path $DG | Out-Null
+    "" | Set-Content (Join-Path $DG "no_auto_update") -Encoding UTF8
+    Write-Host "[graperoot] Auto-update disabled. Run 'graperoot --update' to update manually."
+    exit 0
+}
+
 # -- Version -------------------------------------------------------------------
 if ($Arg0 -in @("--version","-v")) {
     $DG = Join-Path $env:USERPROFILE ".dual-graph"
@@ -364,7 +380,13 @@ $_RemoteVer = ""
 try { $_RemoteVer = (Invoke-WebRequest ($_R2 + '/version.txt') -UseBasicParsing -TimeoutSec 4).Content.Trim() } catch {
     try { $_RemoteVer = (Invoke-WebRequest ($_BaseUrl + '/bin/version.txt') -UseBasicParsing -TimeoutSec 4).Content.Trim() } catch {}
 }
+$_NoAutoUpdateFile = Join-Path $DG "no_auto_update"
 if ($_RemoteVer -and ($_LocalVer -eq "0" -or ([version]$_RemoteVer -gt [version]$_LocalVer))) {
+  if (Test-Path $_NoAutoUpdateFile) {
+    Write-Host "  " -NoNewline; Write-Host ([char]0x2B06) -ForegroundColor Yellow -NoNewline
+    Write-Host " Update available: $_LocalVer -> $_RemoteVer" -ForegroundColor Yellow -NoNewline
+    Write-Host "  Run: " -NoNewline; Write-Host "graperoot --update" -ForegroundColor White
+  } else {
     Write-Host "[$Tool] Update available: $_LocalVer -> $_RemoteVer ... updating"
     # Atomic R2-first download: write to .tmp, validate size, then move  -  prevents corrupt partial writes.
     # R2 is trusted (no CDN cache), so no ScriptBlock parse check needed.
@@ -403,6 +425,7 @@ if ($_RemoteVer -and ($_LocalVer -eq "0" -or ([version]$_RemoteVer -gt [version]
         if ($Resume) { $_restartArgs += "--resume"; $_restartArgs += $Resume }
         & $_newScript @_restartArgs; exit $LASTEXITCODE
     }
+  }
 }
 
 # -- cursor / gemini: need the full pipeline - load shared helpers from dgc.ps1 -
@@ -459,9 +482,25 @@ if (-not (Test-Path $Python)) {
 $DataDir = Join-Path $ProjectPath ".dual-graph"
 New-Item -ItemType Directory -Force -Path $DataDir | Out-Null
 
+$_utf8 = ([Console]::OutputEncoding.CodePage -eq 65001) -or ($PSVersionTable.PSVersion.Major -ge 6) -or ($env:WT_SESSION)
 Write-Host ""
-Write-Host "[$Tool] Project : $ProjectPath"
-Write-Host "[$Tool] Data    : $DataDir"
+if ($_utf8) {
+    Write-Host "   ▄▀▀▀ █▀▀▄ ▄▀▀▄ █▀▀█ █▀▀▀ █▀▀▄ ▄▀▀▄ ▄▀▀▄ ▀█▀" -ForegroundColor Green
+    Write-Host "   █ ▀▄ █▄▄▀ █▄▄█ █▄▄█ █▀▀  █▄▄▀ █  █ █  █  █" -ForegroundColor Green
+    Write-Host "   ▀▀▀▀ ▀ ▀▀ ▀  ▀ █    ▀▀▀▀ ▀ ▀▀ ▀▀▀▀ ▀▀▀▀  ▀" -ForegroundColor Green -NoNewline; Write-Host "   v$_LocalVer" -ForegroundColor White
+    Write-Host "   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor DarkGreen
+} else {
+    Write-Host "   GRAPEROOT" -ForegroundColor Green -NoNewline; Write-Host "  v$_LocalVer" -ForegroundColor White
+    Write-Host "   ---------------------------------------------------------" -ForegroundColor DarkGreen
+}
+Write-Host "   $ProjectPath"
+Write-Host ""
+if ($_utf8) {
+    Write-Host "  ❤️  GrapeRoot is free. A GitHub ⭐ is all we ask — it keeps us going."
+} else {
+    Write-Host "  GrapeRoot is free. A GitHub star is all we ask -- it keeps us going."
+}
+Write-Host "     https://github.com/kunal12203/GrapeRoot | support@graperoot.dev | discord.com/invite/YwKdQATY2d"
 Write-Host ""
 
 # -- Remove conflicting dg.exe if present (old graperoot installed it; renamed to dg-graph in 3.9.34+) --
@@ -547,6 +586,13 @@ try {
     Write-Host "[$Tool] WARNING: graph scan failed - continuing without context graph."
 }
 Write-Host "[$Tool] Scan complete."
+$_graphJson = Join-Path $DataDir "info_graph.json"
+if (Test-Path $_graphJson) {
+    try {
+        $_gs = & $Python -c "import json,sys;g=json.load(open(sys.argv[1]));print(f\""{g.get('file_count',0)} files, {g.get('symbol_count',0)} symbols, {g.get('node_count',0)} nodes, {g.get('edge_count',0)} edges\"")" $_graphJson 2>$null
+        if ($_gs) { Write-Host "  " -NoNewline; Write-Host ([char]0x2B21) -ForegroundColor Green -NoNewline; Write-Host " $_gs" }
+    } catch {}
+}
 Write-Host ""
 
 # -- Start MCP server -----------------------------------------------------------

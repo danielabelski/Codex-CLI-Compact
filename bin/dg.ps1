@@ -307,9 +307,15 @@ try {
     try { $remoteVer = Get-Text ($BaseUrl + '/bin/version.txt') } catch {
         try { $remoteVer = Get-Text ($R2 + '/version.txt') } catch {}
     }
+    $_NoAutoUpdateFile = Join-Path $DG "no_auto_update"
     if ($remoteVer) {
         try {
             if ([version]$remoteVer -gt [version]$localVer) {
+              if (Test-Path $_NoAutoUpdateFile) {
+                Write-Host "  " -NoNewline; Write-Host ([char]0x2B06) -ForegroundColor Yellow -NoNewline
+                Write-Host " Update available: $localVer -> $remoteVer" -ForegroundColor Yellow -NoNewline
+                Write-Host "  Run: " -NoNewline; Write-Host "graperoot --update" -ForegroundColor White
+              } else {
                 if (-not (Test-Path $NoticeFile) -or ((Get-Content $NoticeFile -Raw).Trim() -ne $remoteVer)) {
                     Write-Host "[$Tool] New version available: $localVer -> $remoteVer"
                     Set-Content -Path $NoticeFile -Value $remoteVer -Encoding UTF8
@@ -358,6 +364,7 @@ try {
                 Write-Host "[$Tool] Updated to $remoteVer. Restarting..."
                 $updatedScript = Join-Path $DG "dg.ps1"
                 if (Test-Path $updatedScript) { & $updatedScript $ProjectPath -toolname $RuntimeToolName; exit $LASTEXITCODE }
+              }
             }
         } catch {}
     }
@@ -518,14 +525,25 @@ try {
         $resolvedProject = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($ProjectPath)
     }
 
+    $_utf8 = ([Console]::OutputEncoding.CodePage -eq 65001) -or ($PSVersionTable.PSVersion.Major -ge 6) -or ($env:WT_SESSION)
     Write-Host ""
-    Write-Host "[$Tool] If you receive any errors:"
-    Write-Host "[$Tool]   1. Wait 5 minutes and run dg again"
-    Write-Host "[$Tool]   2. Join Discord for help: https://discord.com/invite/YwKdQATY2d"
+    if ($_utf8) {
+        Write-Host "   ▄▀▀▀ █▀▀▄ ▄▀▀▄ █▀▀█ █▀▀▀ █▀▀▄ ▄▀▀▄ ▄▀▀▄ ▀█▀" -ForegroundColor Green
+        Write-Host "   █ ▀▄ █▄▄▀ █▄▄█ █▄▄█ █▀▀  █▄▄▀ █  █ █  █  █" -ForegroundColor Green
+        Write-Host "   ▀▀▀▀ ▀ ▀▀ ▀  ▀ █    ▀▀▀▀ ▀ ▀▀ ▀▀▀▀ ▀▀▀▀  ▀" -ForegroundColor Green -NoNewline; Write-Host "   v$localVer" -ForegroundColor White
+        Write-Host "   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor DarkGreen
+    } else {
+        Write-Host "   GRAPEROOT" -ForegroundColor Green -NoNewline; Write-Host "  v$localVer" -ForegroundColor White
+        Write-Host "   ---------------------------------------------------------" -ForegroundColor DarkGreen
+    }
+    Write-Host "   $resolvedProject"
     Write-Host ""
-    Write-Host "[$Tool] Enjoying Graperoot? Graperoot Pro is live — 7-day free trial, Claude Code only."
-    Write-Host "[$Tool]   https://graperoot.dev/pricing  |  feedback: support.graperoot.dev or Discord"
-    Write-Host "[$Tool]   (this banner goes away next update)"
+    if ($_utf8) {
+        Write-Host "  ❤️  GrapeRoot is free. A GitHub ⭐ is all we ask — it keeps us going."
+    } else {
+        Write-Host "  GrapeRoot is free. A GitHub star is all we ask -- it keeps us going."
+    }
+    Write-Host "     https://github.com/kunal12203/GrapeRoot | support@graperoot.dev | discord.com/invite/YwKdQATY2d"
     Write-Host ""
 
     $DataDir = Join-Path $resolvedProject ".dual-graph"
@@ -563,6 +581,13 @@ try {
     }
     if (Test-Path $scanErr) { Remove-Item $scanErr -Force -ErrorAction SilentlyContinue }
     Write-Host "[$Tool] Scan complete."
+    $_graphJson = Join-Path $DataDir "info_graph.json"
+    if (Test-Path $_graphJson) {
+        try {
+            $_gs = & $Python -c "import json,sys;g=json.load(open(sys.argv[1]));print(f\""{g.get('file_count',0)} files, {g.get('symbol_count',0)} symbols, {g.get('node_count',0)} nodes, {g.get('edge_count',0)} edges\"")" $_graphJson 2>$null
+            if ($_gs) { Write-Host "  " -NoNewline; Write-Host ([char]0x2B21) -ForegroundColor Green -NoNewline; Write-Host " $_gs" }
+        } catch {}
+    }
     Write-Host ""
 
     $pidFile = Join-Path $DataDir "mcp_server.pid"

@@ -1,3 +1,9 @@
+3.10.14
+- Added: startup banner with GRAPEROOT block art, version, project path, and GitHub star call-to-action
+- Added: graph stats display after scan (files, symbols, nodes, edges)
+- Added: UTF-8 detection with graceful ASCII fallback for older terminals
+- Added: auto-update opt-out (graperoot --no-auto-update / --auto-update)
+
 3.10.13
 - Fixed: crash on fresh install (mcp version check failed when mcp not yet installed)
 
