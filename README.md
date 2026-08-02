@@ -321,7 +321,7 @@ To re-enable:
 graperoot --auto-update
 ```
 
-Current version: **3.10.16**
+Current version: **3.10.17**
 
 ---
 
