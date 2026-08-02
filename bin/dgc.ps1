@@ -348,14 +348,18 @@ function Has-ClaudeMcp([string]$Name) {
 }
 
 function Stop-McpServer([string]$PidFile, [string]$PortFile) {
+    $ownPid = if (Test-Path $PidFile) { [int](Get-Content $PidFile -Raw) } else { -1 }
     if (Test-Path $PidFile) {
-        try { Stop-Process -Id ([int](Get-Content $PidFile -Raw)) -Force -ErrorAction SilentlyContinue } catch {}
+        try { Stop-Process -Id $ownPid -Force -ErrorAction SilentlyContinue } catch {}
         Remove-Item $PidFile -Force -ErrorAction SilentlyContinue
     }
     if (Test-Path $PortFile) {
         try {
             $p = [int](Get-Content $PortFile -Raw)
-            Get-NetTCPConnection -LocalPort $p -State Listen -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess | ForEach-Object { Stop-Process -Id $_ -Force -ErrorAction SilentlyContinue }
+            Get-NetTCPConnection -LocalPort $p -State Listen -ErrorAction SilentlyContinue |
+                Select-Object -ExpandProperty OwningProcess | ForEach-Object {
+                    if ($_ -eq $ownPid) { Stop-Process -Id $_ -Force -ErrorAction SilentlyContinue }
+                }
         } catch {}
         Remove-Item $PortFile -Force -ErrorAction SilentlyContinue
     }
@@ -536,8 +540,12 @@ try {
                     [void](Download-File ($R2 + '/version.txt') ($BaseUrl + '/bin/version.txt') (Join-Path $DG "version.txt"))
                 }
                 # Upgrade graperoot so venv gets latest mcp_graph_server + compiled modules
+                # Force mcp<2.0.0 reinstall — mcp 2.0.0 removed FastMCP and breaks the server
                 $venvPip = Join-Path $DG "venv\Scripts\pip.exe"
-                if (Test-Path $venvPip) { Invoke-NativeQuiet $venvPip @("install", "graperoot", "--upgrade", "--quiet") | Out-Null }
+                if (Test-Path $venvPip) {
+                    Invoke-NativeQuiet $venvPip @("install", "mcp>=1.3.0,<2.0.0", "--quiet", "--force-reinstall") | Out-Null
+                    Invoke-NativeQuiet $venvPip @("install", "graperoot", "--upgrade", "--quiet") | Out-Null
+                }
                 # Show changelog for new version (max 3 lines)
                 try {
                     $changelog = ""
@@ -662,17 +670,18 @@ try {
     # gets "Access Denied" because it only works on processes owned by the current session.
     $pidFile = Join-Path $DG "mcp_server.pid"
     $portFile = Join-Path $DG "mcp_port"
+    $prePid = if (Test-Path $pidFile) { [int](Get-Content $pidFile -Raw) } else { -1 }
     if (Test-Path $pidFile) {
-        try { Stop-Process -Id ([int](Get-Content $pidFile -Raw)) -Force -ErrorAction SilentlyContinue } catch {}
+        try { Stop-Process -Id $prePid -Force -ErrorAction SilentlyContinue } catch {}
         Remove-Item $pidFile -Force -ErrorAction SilentlyContinue
     }
-    # Kill only THIS project's previous server (by port file), not all sessions.
+    # Kill only THIS project's previous server (by PID match), not other sessions.
     if (Test-Path $portFile) {
         try {
             $oldPort = [int](Get-Content $portFile -Raw)
             Get-NetTCPConnection -LocalPort $oldPort -State Listen -ErrorAction SilentlyContinue |
                 Select-Object -ExpandProperty OwningProcess -Unique |
-                ForEach-Object { try { Stop-Process -Id $_ -Force -ErrorAction SilentlyContinue } catch {} }
+                ForEach-Object { if ($_ -eq $prePid) { try { Stop-Process -Id $_ -Force -ErrorAction SilentlyContinue } catch {} } }
         } catch {}
         Remove-Item $portFile -Force -ErrorAction SilentlyContinue
     }
@@ -733,6 +742,13 @@ try {
         @("graph_builder.py", "dg.py", "mcp_graph_server.py", "context_packer.py", "dgc_claude.py") | ForEach-Object {
             Remove-Item (Join-Path $DG $_) -ErrorAction SilentlyContinue
         }
+    }
+
+    # Ensure mcp<2.0.0 — mcp 2.0.0 removed FastMCP and causes handshake failure
+    $mcpVer = & $Python -c "import mcp; print(mcp.__version__)" 2>$null
+    if ($mcpVer -and ([version]$mcpVer -ge [version]"2.0.0")) {
+        Write-Host "[$Tool] mcp $mcpVer detected (incompatible) -- reinstalling mcp<2.0.0..."
+        Invoke-NativeQuiet $pip @("install", "mcp>=1.3.0,<2.0.0", "--quiet", "--force-reinstall") | Out-Null
     }
 
     # ripgrep (rg) is required by the fallback_rg MCP tool  -  install if missing
@@ -868,18 +884,20 @@ try {
 
     $pidFile = Join-Path $DataDir "mcp_server.pid"
     $portFile = Join-Path $DataDir "mcp_port"
+    $ownPid = if (Test-Path $pidFile) { [int](Get-Content $pidFile -Raw) } else { -1 }
     if (Test-Path $pidFile) {
         try {
-            Stop-Process -Id ([int](Get-Content $pidFile -Raw)) -Force -ErrorAction SilentlyContinue
+            Stop-Process -Id $ownPid -Force -ErrorAction SilentlyContinue
         } catch {}
         Remove-Item $pidFile -Force -ErrorAction SilentlyContinue
     }
     if (Test-Path $portFile) {
         try {
             $oldPort = [int](Get-Content $portFile -Raw)
-            Get-NetTCPConnection -LocalPort $oldPort -State Listen -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess | ForEach-Object {
-                Stop-Process -Id $_ -Force -ErrorAction SilentlyContinue
-            }
+            Get-NetTCPConnection -LocalPort $oldPort -State Listen -ErrorAction SilentlyContinue |
+                Select-Object -ExpandProperty OwningProcess | ForEach-Object {
+                    if ($_ -eq $ownPid) { Stop-Process -Id $_ -Force -ErrorAction SilentlyContinue }
+                }
         } catch {}
         Remove-Item $portFile -Force -ErrorAction SilentlyContinue
     }
@@ -1225,15 +1243,17 @@ $stopTemplate = _B64Decode ("JGhvb2tJbnB1dCA9IFtDb25zb2xlXTo6SW4uUmVhZFRvRW5kKCk
     Remove-ClaudeMcpSafe "dual-graph"
     # Token counter is global; do not remove it on exit.
     if (Test-Path $pidFile) {
-        try { Stop-Process -Id ([int](Get-Content $pidFile -Raw)) -Force -ErrorAction SilentlyContinue } catch {}
+        $cleanupPid = [int](Get-Content $pidFile -Raw)
+        try { Stop-Process -Id $cleanupPid -Force -ErrorAction SilentlyContinue } catch {}
         Remove-Item $pidFile -Force -ErrorAction SilentlyContinue
     }
     if (Test-Path $portFile) {
         try {
             $killPort = [int](Get-Content $portFile -Raw)
-            Get-NetTCPConnection -LocalPort $killPort -State Listen -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess | ForEach-Object {
-                Stop-Process -Id $_ -Force -ErrorAction SilentlyContinue
-            }
+            Get-NetTCPConnection -LocalPort $killPort -State Listen -ErrorAction SilentlyContinue |
+                Select-Object -ExpandProperty OwningProcess | ForEach-Object {
+                    if ($_ -eq $cleanupPid) { Stop-Process -Id $_ -Force -ErrorAction SilentlyContinue }
+                }
         } catch {}
         Remove-Item $portFile -Force -ErrorAction SilentlyContinue
     }
