@@ -94,12 +94,28 @@ if [[ -f "$PROJECT/.gitignore" ]] && ! grep -qx '.dual-graph/' "$PROJECT/.gitign
 fi
 
 # ── Build graph ───────────────────────────────────────────────────────────────
-echo "[$TOOL_LABEL] Scanning project..."
-DG_DATA_DIR="$DATA_DIR" \
-DUAL_GRAPH_PROJECT_ROOT="$PROJECT" \
-  "${GRAPH_CMD[@]}" --out "$DATA_DIR/info_graph.json" \
-  2>/dev/null || echo "[$TOOL_LABEL] Warning: graph scan had errors (continuing)"
-echo "[$TOOL_LABEL] Scan complete."
+_NEEDS_SCAN=1
+_GRAPH_DB="$DATA_DIR/info_graph.db"
+_GRAPH_JSON="$DATA_DIR/info_graph.json"
+if [[ -f "$_GRAPH_DB" || -f "$_GRAPH_JSON" ]]; then
+  _REF_FILE="$_GRAPH_DB"
+  [[ ! -f "$_REF_FILE" ]] && _REF_FILE="$_GRAPH_JSON"
+  _CHANGED="$(find "$PROJECT" -maxdepth 3 \( -name "*.ts" -o -name "*.tsx" -o -name "*.js" -o -name "*.py" -o -name "*.go" -o -name "*.rs" -o -name "*.java" -o -name "*.swift" -o -name "*.kt" -o -name "*.rb" -o -name "*.php" -o -name "*.cs" -o -name "*.scala" \) -newer "$_REF_FILE" -print -quit 2>/dev/null)"
+  if [[ -z "$_CHANGED" ]]; then
+    _NEEDS_SCAN=0
+  fi
+fi
+
+if [[ "$_NEEDS_SCAN" == "1" ]]; then
+  echo "[$TOOL_LABEL] Scanning project..."
+  DG_DATA_DIR="$DATA_DIR" \
+  DUAL_GRAPH_PROJECT_ROOT="$PROJECT" \
+    "${GRAPH_CMD[@]}" --out "$DATA_DIR/info_graph.json" \
+    2>/dev/null || echo "[$TOOL_LABEL] Warning: graph scan had errors (continuing)"
+  echo "[$TOOL_LABEL] Scan complete."
+else
+  echo "[$TOOL_LABEL] Graph up to date, skipping scan."
+fi
 _GRAPH_STATS="$("$PYTHON" -c "
 import json, sys
 try:

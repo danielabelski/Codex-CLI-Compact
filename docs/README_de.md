@@ -1,6 +1,10 @@
 <div align="center">
 
-# GrapeRoot
+```
+ ▄▀▀▀ █▀▀▄ ▄▀▀▄ █▀▀█ █▀▀▀ █▀▀▄ ▄▀▀▄ ▄▀▀▄ ▀█▀
+ █ ▀▄ █▄▄▀ █▄▄█ █▄▄█ █▀▀  █▄▄▀ █  █ █  █  █
+ ▀▀▀▀ ▀ ▀▀ ▀  ▀ █    ▀▀▀▀ ▀ ▀▀ ▀▀▀▀ ▀▀▀▀  ▀
+```
 
 ### Kumulativer Kontext für KI-Programmierassistenten
 
@@ -232,7 +236,7 @@ Um sie wieder zu aktivieren:
 graperoot --auto-update
 ```
 
-Aktuelle Version: **3.10.15**
+Aktuelle Version: **3.10.16**
 
 ---
 

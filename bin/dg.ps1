@@ -553,23 +553,44 @@ try {
     Write-Host "[$Tool] Project : $resolvedProject"
     Write-Host "[$Tool] Data    : $DataDir"
     Write-Host ""
-    Write-Host "[$Tool] Scanning project..."
-    if ($grapeOk) {
-        & (Join-Path $VenvBin "graph-builder.exe") --root $resolvedProject --out (Join-Path $DataDir "info_graph.json") 2> $scanErr
-    } else {
-        & $Python (Join-Path $DG "graph_builder.py") --root $resolvedProject --out (Join-Path $DataDir "info_graph.json") 2> $scanErr
-    }
-    if ($LASTEXITCODE -ne 0) {
-        $tail = "no stderr captured"
-        if (Test-Path $scanErr) {
-            $tail = ((Get-Content $scanErr -Tail 20 -ErrorAction SilentlyContinue) -join " ") -replace '\s+', ' '
-            if ($tail.Length -gt 700) { $tail = $tail.Substring(0, 700) }
+    # Skip scan if graph exists and no source files changed
+    $_graphDb = Join-Path $DataDir "info_graph.db"
+    $_graphJson = Join-Path $DataDir "info_graph.json"
+    $_needsScan = $true
+    if ((Test-Path $_graphDb) -or (Test-Path $_graphJson)) {
+        $_refFile = if (Test-Path $_graphDb) { $_graphDb } else { $_graphJson }
+        $_refTime = (Get-Item $_refFile).LastWriteTime
+        $_exts = @("*.ts","*.tsx","*.js","*.py","*.go","*.rs","*.java","*.swift","*.kt","*.rb","*.php","*.cs","*.scala")
+        $_changed = $false
+        foreach ($_ext in $_exts) {
+            $hit = Get-ChildItem -Path $resolvedProject -Filter $_ext -Recurse -Depth 3 -File -ErrorAction SilentlyContinue |
+                Where-Object { $_.LastWriteTime -gt $_refTime } | Select-Object -First 1
+            if ($hit) { $_changed = $true; break }
         }
-        Send-CliError "Project scan" "project scan failed: $tail"
-        throw "project scan failed"
+        if (-not $_changed) { $_needsScan = $false }
     }
-    if (Test-Path $scanErr) { Remove-Item $scanErr -Force -ErrorAction SilentlyContinue }
-    Write-Host "[$Tool] Scan complete."
+
+    if ($_needsScan) {
+        Write-Host "[$Tool] Scanning project..."
+        if ($grapeOk) {
+            & (Join-Path $VenvBin "graph-builder.exe") --root $resolvedProject --out (Join-Path $DataDir "info_graph.json") 2> $scanErr
+        } else {
+            & $Python (Join-Path $DG "graph_builder.py") --root $resolvedProject --out (Join-Path $DataDir "info_graph.json") 2> $scanErr
+        }
+        if ($LASTEXITCODE -ne 0) {
+            $tail = "no stderr captured"
+            if (Test-Path $scanErr) {
+                $tail = ((Get-Content $scanErr -Tail 20 -ErrorAction SilentlyContinue) -join " ") -replace '\s+', ' '
+                if ($tail.Length -gt 700) { $tail = $tail.Substring(0, 700) }
+            }
+            Send-CliError "Project scan" "project scan failed: $tail"
+            throw "project scan failed"
+        }
+        if (Test-Path $scanErr) { Remove-Item $scanErr -Force -ErrorAction SilentlyContinue }
+        Write-Host "[$Tool] Scan complete."
+    } else {
+        Write-Host "[$Tool] Graph up to date, skipping scan."
+    }
     $_graphJson = Join-Path $DataDir "info_graph.json"
     if (Test-Path $_graphJson) {
         try {

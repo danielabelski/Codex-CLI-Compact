@@ -1,6 +1,10 @@
 <div align="center">
 
-# GrapeRoot
+```
+ ▄▀▀▀ █▀▀▄ ▄▀▀▄ █▀▀█ █▀▀▀ █▀▀▄ ▄▀▀▄ ▄▀▀▄ ▀█▀
+ █ ▀▄ █▄▄▀ █▄▄█ █▄▄█ █▀▀  █▄▄▀ █  █ █  █  █
+ ▀▀▀▀ ▀ ▀▀ ▀  ▀ █    ▀▀▀▀ ▀ ▀▀ ▀▀▀▀ ▀▀▀▀  ▀
+```
 
 ### Konteks Berlipat untuk Asisten Pengkodean AI
 
@@ -232,7 +236,7 @@ Untuk mengaktifkannya kembali:
 graperoot --auto-update
 ```
 
-Versi saat ini: **3.10.15**
+Versi saat ini: **3.10.16**
 
 ---
 

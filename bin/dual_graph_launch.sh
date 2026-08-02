@@ -1517,30 +1517,47 @@ if [[ ! -f "$DATA_DIR/context-store.json" ]]; then
   echo "[]" > "$DATA_DIR/context-store.json"
 fi
 
-echo "[$TOOL_LABEL] Scanning project..."
-CURRENT_STEP="Scanning project"
-_SCAN_ERR_FILE="$DATA_DIR/scan_error.log"
-rm -f "$_SCAN_ERR_FILE" 2>/dev/null || true
-_SCAN_OK=0
-if _run_graph_builder --root "$PROJECT" --out "$DATA_DIR/info_graph.json" 2>"$_SCAN_ERR_FILE"; then
-  _SCAN_OK=1
-else
-  # Auto-fix: reinstall Python deps and retry once
-  echo "[$TOOL_LABEL] Scan failed — reinstalling Python deps and retrying..."
-  _install_deps "$VENV" 2>/dev/null || true
-  rm -f "$_SCAN_ERR_FILE" 2>/dev/null || true
-  if _run_graph_builder --root "$PROJECT" --out "$DATA_DIR/info_graph.json" 2>"$_SCAN_ERR_FILE"; then
-    _SCAN_OK=1
+# Skip full scan if graph already exists and no source files changed since last scan
+_NEEDS_SCAN=1
+_GRAPH_DB="$DATA_DIR/info_graph.db"
+_GRAPH_JSON="$DATA_DIR/info_graph.json"
+if [[ -f "$_GRAPH_DB" || -f "$_GRAPH_JSON" ]]; then
+  _REF_FILE="$_GRAPH_DB"
+  [[ ! -f "$_REF_FILE" ]] && _REF_FILE="$_GRAPH_JSON"
+  _CHANGED="$(find "$PROJECT" -maxdepth 3 \( -name "*.ts" -o -name "*.tsx" -o -name "*.js" -o -name "*.py" -o -name "*.go" -o -name "*.rs" -o -name "*.java" -o -name "*.swift" -o -name "*.kt" -o -name "*.rb" -o -name "*.php" -o -name "*.cs" -o -name "*.scala" \) -newer "$_REF_FILE" -print -quit 2>/dev/null)"
+  if [[ -z "$_CHANGED" ]]; then
+    _NEEDS_SCAN=0
   fi
 fi
-if [[ "$_SCAN_OK" != "1" ]]; then
-  echo "[$TOOL_LABEL] Error: project scan failed after retry."
-  _SCAN_TAIL="$(tail -n 20 "$_SCAN_ERR_FILE" 2>/dev/null | tr '\n' ' ' | tr '\r' ' ' | sed 's/[[:space:]]\+/ /g' | cut -c1-700)"
-  [[ -z "$_SCAN_TAIL" ]] && _SCAN_TAIL="no stderr captured"
-  _send_cli_error "Scanning project" "Project scan failed in dual_graph_launch.sh: $_SCAN_TAIL"
-  exit 1
+
+if [[ "$_NEEDS_SCAN" == "1" ]]; then
+  echo "[$TOOL_LABEL] Scanning project..."
+  CURRENT_STEP="Scanning project"
+  _SCAN_ERR_FILE="$DATA_DIR/scan_error.log"
+  rm -f "$_SCAN_ERR_FILE" 2>/dev/null || true
+  _SCAN_OK=0
+  if _run_graph_builder --root "$PROJECT" --out "$DATA_DIR/info_graph.json" 2>"$_SCAN_ERR_FILE"; then
+    _SCAN_OK=1
+  else
+    # Auto-fix: reinstall Python deps and retry once
+    echo "[$TOOL_LABEL] Scan failed — reinstalling Python deps and retrying..."
+    _install_deps "$VENV" 2>/dev/null || true
+    rm -f "$_SCAN_ERR_FILE" 2>/dev/null || true
+    if _run_graph_builder --root "$PROJECT" --out "$DATA_DIR/info_graph.json" 2>"$_SCAN_ERR_FILE"; then
+      _SCAN_OK=1
+    fi
+  fi
+  if [[ "$_SCAN_OK" != "1" ]]; then
+    echo "[$TOOL_LABEL] Error: project scan failed after retry."
+    _SCAN_TAIL="$(tail -n 20 "$_SCAN_ERR_FILE" 2>/dev/null | tr '\n' ' ' | tr '\r' ' ' | sed 's/[[:space:]]\+/ /g' | cut -c1-700)"
+    [[ -z "$_SCAN_TAIL" ]] && _SCAN_TAIL="no stderr captured"
+    _send_cli_error "Scanning project" "Project scan failed in dual_graph_launch.sh: $_SCAN_TAIL"
+    exit 1
+  fi
+  rm -f "$_SCAN_ERR_FILE" 2>/dev/null || true
+else
+  echo "[$TOOL_LABEL] Graph up to date, skipping scan."
 fi
-rm -f "$_SCAN_ERR_FILE" 2>/dev/null || true
 _GRAPH_STATS="$("$PYTHON" -c "
 import json, sys
 try:

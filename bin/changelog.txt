@@ -1,3 +1,7 @@
+3.10.16
+- Improved: skip full scan on launch if no source files changed (saves ~100s on large repos)
+- Added: ASCII banner in README
+
 3.10.15
 - Added: telemetry opt-out (graperoot --no-telemetry / --telemetry)
 - Added: Kilocode and MiMo Code support in README and help text

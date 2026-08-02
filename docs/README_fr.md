@@ -1,6 +1,10 @@
 <div align="center">
 
-# GrapeRoot
+```
+ ▄▀▀▀ █▀▀▄ ▄▀▀▄ █▀▀█ █▀▀▀ █▀▀▄ ▄▀▀▄ ▄▀▀▄ ▀█▀
+ █ ▀▄ █▄▄▀ █▄▄█ █▄▄█ █▀▀  █▄▄▀ █  █ █  █  █
+ ▀▀▀▀ ▀ ▀▀ ▀  ▀ █    ▀▀▀▀ ▀ ▀▀ ▀▀▀▀ ▀▀▀▀  ▀
+```
 
 ### Contexte cumulatif pour les assistants de programmation IA
 
@@ -232,7 +236,7 @@ Pour la réactiver :
 graperoot --auto-update
 ```
 
-Version actuelle : **3.10.15**
+Version actuelle : **3.10.16**
 
 ---
 

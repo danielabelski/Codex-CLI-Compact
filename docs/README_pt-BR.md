@@ -1,6 +1,10 @@
 <div align="center">
 
-# GrapeRoot
+```
+ ▄▀▀▀ █▀▀▄ ▄▀▀▄ █▀▀█ █▀▀▀ █▀▀▄ ▄▀▀▄ ▄▀▀▄ ▀█▀
+ █ ▀▄ █▄▄▀ █▄▄█ █▄▄█ █▀▀  █▄▄▀ █  █ █  █  █
+ ▀▀▀▀ ▀ ▀▀ ▀  ▀ █    ▀▀▀▀ ▀ ▀▀ ▀▀▀▀ ▀▀▀▀  ▀
+```
 
 ### Contexto Composto para Assistentes de Codificação com IA
 
@@ -232,7 +236,7 @@ Para reativar:
 graperoot --auto-update
 ```
 
-Versão atual: **3.10.15**
+Versão atual: **3.10.16**
 
 ---
 

@@ -1,6 +1,10 @@
 <div align="center">
 
-# GrapeRoot
+```
+ ▄▀▀▀ █▀▀▄ ▄▀▀▄ █▀▀█ █▀▀▀ █▀▀▄ ▄▀▀▄ ▄▀▀▄ ▀█▀
+ █ ▀▄ █▄▄▀ █▄▄█ █▄▄█ █▀▀  █▄▄▀ █  █ █  █  █
+ ▀▀▀▀ ▀ ▀▀ ▀  ▀ █    ▀▀▀▀ ▀ ▀▀ ▀▀▀▀ ▀▀▀▀  ▀
+```
 
 ### Compounding Context for AI Coding Assistants
 
@@ -279,7 +283,7 @@ To re-enable:
 graperoot --auto-update
 ```
 
-Current version: **3.10.15**
+Current version: **3.10.16**
 
 ---
 

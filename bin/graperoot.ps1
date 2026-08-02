@@ -589,23 +589,44 @@ if (-not (Test-Path $GraphExe)) {
         }
     }
 }
-Write-Host "[$Tool] Scanning project..."
-$InfoGraph = Join-Path $DataDir "info_graph.json"
-try {
-    if (Test-Path $GraphExe) {
-        & $GraphExe --root $ProjectPath --out $InfoGraph 2>&1 | ForEach-Object { Write-Host $_ }
-    } elseif ($GraphModule) {
-        & $Python -c "from graperoot.graph_builder import main; main()" --root $ProjectPath --out $InfoGraph 2>&1 | ForEach-Object { Write-Host $_ }
-    } elseif ($GraphPy) {
-        & $Python $GraphPy --root $ProjectPath --out $InfoGraph 2>&1 | ForEach-Object { Write-Host $_ }
-    } else {
-        Write-Host "[$Tool] WARNING: graph_builder not found - continuing without context graph."
-        Write-Host "[$Tool]   Fix: & `"$DG\venv\Scripts\pip.exe`" install graperoot --upgrade --force-reinstall"
+# Skip scan if graph exists and no source files changed
+$_graphDb = Join-Path $DataDir "info_graph.db"
+$_graphJsonCheck = Join-Path $DataDir "info_graph.json"
+$_needsScan = $true
+if ((Test-Path $_graphDb) -or (Test-Path $_graphJsonCheck)) {
+    $_refFile = if (Test-Path $_graphDb) { $_graphDb } else { $_graphJsonCheck }
+    $_refTime = (Get-Item $_refFile).LastWriteTime
+    $_exts = @("*.ts","*.tsx","*.js","*.py","*.go","*.rs","*.java","*.swift","*.kt","*.rb","*.php","*.cs","*.scala")
+    $_changed = $false
+    foreach ($_ext in $_exts) {
+        $hit = Get-ChildItem -Path $ProjectPath -Filter $_ext -Recurse -Depth 3 -File -ErrorAction SilentlyContinue |
+            Where-Object { $_.LastWriteTime -gt $_refTime } | Select-Object -First 1
+        if ($hit) { $_changed = $true; break }
     }
-} catch {
-    Write-Host "[$Tool] WARNING: graph scan failed - continuing without context graph."
+    if (-not $_changed) { $_needsScan = $false }
 }
-Write-Host "[$Tool] Scan complete."
+
+$InfoGraph = Join-Path $DataDir "info_graph.json"
+if ($_needsScan) {
+    Write-Host "[$Tool] Scanning project..."
+    try {
+        if (Test-Path $GraphExe) {
+            & $GraphExe --root $ProjectPath --out $InfoGraph 2>&1 | ForEach-Object { Write-Host $_ }
+        } elseif ($GraphModule) {
+            & $Python -c "from graperoot.graph_builder import main; main()" --root $ProjectPath --out $InfoGraph 2>&1 | ForEach-Object { Write-Host $_ }
+        } elseif ($GraphPy) {
+            & $Python $GraphPy --root $ProjectPath --out $InfoGraph 2>&1 | ForEach-Object { Write-Host $_ }
+        } else {
+            Write-Host "[$Tool] WARNING: graph_builder not found - continuing without context graph."
+            Write-Host "[$Tool]   Fix: & `"$DG\venv\Scripts\pip.exe`" install graperoot --upgrade --force-reinstall"
+        }
+    } catch {
+        Write-Host "[$Tool] WARNING: graph scan failed - continuing without context graph."
+    }
+    Write-Host "[$Tool] Scan complete."
+} else {
+    Write-Host "[$Tool] Graph up to date, skipping scan."
+}
 $_graphJson = Join-Path $DataDir "info_graph.json"
 if (Test-Path $_graphJson) {
     try {

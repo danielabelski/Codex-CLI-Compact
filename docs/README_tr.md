@@ -1,6 +1,10 @@
 <div align="center">
 
-# GrapeRoot
+```
+ ▄▀▀▀ █▀▀▄ ▄▀▀▄ █▀▀█ █▀▀▀ █▀▀▄ ▄▀▀▄ ▄▀▀▄ ▀█▀
+ █ ▀▄ █▄▄▀ █▄▄█ █▄▄█ █▀▀  █▄▄▀ █  █ █  █  █
+ ▀▀▀▀ ▀ ▀▀ ▀  ▀ █    ▀▀▀▀ ▀ ▀▀ ▀▀▀▀ ▀▀▀▀  ▀
+```
 
 ### Yapay Zeka Kodlama Asistanları için Birikimli Bağlam Motoru
 
@@ -232,7 +236,7 @@ Yeniden etkinleştirmek için:
 graperoot --auto-update
 ```
 
-Mevcut sürüm: **3.10.15**
+Mevcut sürüm: **3.10.16**
 
 ---
 
