@@ -2,15 +2,7 @@
 
 <br>
 
-<img src="./assets/graperoot-icon.svg" width="80" alt="GrapeRoot">
-
-<br><br>
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="./assets/graperoot-wordmark-light.svg">
-  <source media="(prefers-color-scheme: light)" srcset="./assets/graperoot-wordmark.svg">
-  <img src="./assets/graperoot-wordmark.svg" width="275" alt="GRAPEROOT">
-</picture>
+<img src="./assets/graperoot-icon.svg" width="60" alt="GrapeRoot" align="middle">&nbsp;&nbsp;&nbsp;<picture><source media="(prefers-color-scheme: dark)" srcset="./assets/graperoot-wordmark-light.svg"><source media="(prefers-color-scheme: light)" srcset="./assets/graperoot-wordmark.svg"><img src="./assets/graperoot-wordmark.svg" width="350" alt="GRAPEROOT" align="middle"></picture>
 
 <br><br>
 
