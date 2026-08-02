@@ -1,3 +1,6 @@
+3.10.13
+- Fixed: crash on fresh install (mcp version check failed when mcp not yet installed)
+
 3.10.12
 - Fixed: multi-project port collision (no longer kills other projects' MCP servers on startup)
 - Fixed: MCP handshake failure on Windows when mcp 2.0.0 was already installed
