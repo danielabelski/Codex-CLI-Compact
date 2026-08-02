@@ -134,6 +134,8 @@ Full benchmark methodology and results: [graperoot.dev/benchmarks](https://grape
 | Kilocode | `graperoot . --kilocode` | ✅ Full support |
 | MiMo Code | `graperoot . --mimocode` | ✅ Full support |
 | Antigravity | `graperoot . --antigravity` | ✅ Full support |
+| Kiro CLI | `graperoot . --kiro` | ✅ Full support |
+| Command Code | `graperoot . --command-code` | ✅ Full support |
 
 ---
 
@@ -241,6 +243,8 @@ graperoot . --copilot         # GitHub Copilot
 graperoot . --openclaw        # OpenClaw
 graperoot . --kilocode        # Kilocode
 graperoot . --mimocode        # MiMo Code
+graperoot . --kiro            # Kiro CLI
+graperoot . --command-code    # Command Code
 graperoot /path --gemini "add tests"   # specific project + prompt
 ```
 

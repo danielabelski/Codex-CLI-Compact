@@ -13,6 +13,8 @@
 #   graperoot [path] --openclaw     OpenClaw
 #   graperoot [path] --kilocode    Kilocode
 #   graperoot [path] --mimocode    MiMo Code (Xiaomi)
+#   graperoot [path] --kiro         Kiro CLI
+#   graperoot [path] --command-code Command Code
 
 param(
     [Parameter(Position = 0)] [string]$Arg0 = ".",
@@ -29,6 +31,8 @@ param(
     [switch]$openclaw,
     [switch]$kilocode,
     [switch]$mimocode,
+    [switch]$kiro,
+    [switch]${command-code},
     [string]$toolname = "graperoot"
 )
 
@@ -213,7 +217,7 @@ $env:DG_TOOLNAME = $RuntimeToolName
 $Assistant   = "claude"   # default
 $ProjectPath = ""
 $Passthrough = @()
-$_validTools = @("claude","codex","cursor","gemini","opencode","copilot","antigravity","openclaw","kilocode","mimocode")
+$_validTools = @("claude","codex","cursor","gemini","opencode","copilot","antigravity","openclaw","kilocode","mimocode","kiro","command-code")
 $_toolSet    = $false
 $_inputArgs  = @($Arg0, $Arg1, $Arg2)
 if ($args) { $_inputArgs += $args }
@@ -228,6 +232,8 @@ elseif ($antigravity) { $Assistant = "antigravity";  $_toolSet = $true }
 elseif ($openclaw)    { $Assistant = "openclaw";     $_toolSet = $true }
 elseif ($kilocode)    { $Assistant = "kilocode";     $_toolSet = $true }
 elseif ($mimocode)    { $Assistant = "mimocode";     $_toolSet = $true }
+elseif ($kiro)        { $Assistant = "kiro";         $_toolSet = $true }
+elseif (${command-code}) { $Assistant = "command-code"; $_toolSet = $true }
 elseif ($codex)       { $Assistant = "codex";        $_toolSet = $true }
 elseif ($claude)      { $Assistant = "claude";       $_toolSet = $true }
 
@@ -244,6 +250,8 @@ while ($_argIndex -lt $_inputArgs.Count) {
     if ($arg -in @("--openclaw","openclaw"))       { $Assistant = "openclaw";    $_toolSet = $true; $_argIndex++; continue }
     if ($arg -in @("--kilocode","kilocode"))       { $Assistant = "kilocode";    $_toolSet = $true; $_argIndex++; continue }
     if ($arg -in @("--mimocode","mimocode"))       { $Assistant = "mimocode";    $_toolSet = $true; $_argIndex++; continue }
+    if ($arg -in @("--kiro","kiro"))               { $Assistant = "kiro";        $_toolSet = $true; $_argIndex++; continue }
+    if ($arg -in @("--command-code","command-code","--commandcode","commandcode")) { $Assistant = "command-code"; $_toolSet = $true; $_argIndex++; continue }
     if ($arg -match '^-{1,2}toolname=(.*)$') {
         $RuntimeToolName = Normalize-ToolName $Matches[1]
         $env:DG_TOOLNAME = $RuntimeToolName
@@ -312,7 +320,7 @@ if ($_canPickInteractive) {
     }
     Write-Host ""
 
-    $_toolKeys   = @("claude", "codex", "cursor", "gemini", "opencode", "copilot", "antigravity", "openclaw", "kilocode", "mimocode")
+    $_toolKeys   = @("claude", "codex", "cursor", "gemini", "opencode", "copilot", "antigravity", "openclaw", "kilocode", "mimocode", "kiro", "command-code")
     $_toolLabels = @("Claude Code", "OpenAI Codex", "Cursor", "Gemini CLI", "OpenCode", "GitHub Copilot", "Antigravity", "OpenClaw", "Kilocode", "MiMo Code")
     $_numTools   = $_toolKeys.Count
     $_selected   = 0
@@ -1161,6 +1169,106 @@ if ($Assistant -eq "mimocode") {
     Write-Host "[$Tool] Starting mimo..."
     Write-Host ""
     if ($Passthrough.Count -gt 0) { mimo @Passthrough } else { mimo }
+}
+
+# -- Kiro CLI: write .kiro/settings/mcp.json and launch ------------------------
+if ($Assistant -eq "kiro") {
+    if (-not (Get-Command kiro-cli -ErrorAction SilentlyContinue)) {
+        Write-Host "[$Tool] kiro-cli not found - installing..."
+        try {
+            $kiroInstaller = Invoke-WebRequest "https://kiro.dev/install.ps1" -UseBasicParsing -TimeoutSec 30
+            Invoke-Expression $kiroInstaller.Content
+        } catch {}
+        $env:PATH = [System.Environment]::GetEnvironmentVariable("PATH", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("PATH", "User")
+        if (-not (Get-Command kiro-cli -ErrorAction SilentlyContinue)) {
+            Write-Host "[$Tool] ERROR: could not auto-install kiro-cli."
+            Write-Host "[$Tool]   Visit https://kiro.dev/downloads/ to install manually."
+            Stop-Process -Id $mcpProc.Id -Force -ErrorAction SilentlyContinue
+            exit 1
+        }
+        Write-Host "[$Tool] kiro-cli installed."
+    }
+
+    $KiroDir = Join-Path $ProjectPath ".kiro\settings"
+    New-Item -ItemType Directory -Force -Path $KiroDir | Out-Null
+    $KiroConf = Join-Path $KiroDir "mcp.json"
+    $kiroExisting = [PSCustomObject]@{ mcpServers = [PSCustomObject]@{} }
+    if (Test-Path $KiroConf) {
+        try {
+            $parsed = Get-Content $KiroConf -Raw | ConvertFrom-Json
+            if ($parsed) { $kiroExisting = $parsed }
+        } catch {}
+    }
+    if (-not $kiroExisting.mcpServers) {
+        $kiroExisting | Add-Member -NotePropertyName "mcpServers" -NotePropertyValue ([PSCustomObject]@{}) -Force
+    }
+    $kiroExisting.mcpServers | Add-Member -NotePropertyName "dual-graph" `
+        -NotePropertyValue ([PSCustomObject]@{ url = "http://127.0.0.1:$McpPort/mcp" }) -Force
+    $kiroTmp = [System.IO.Path]::GetTempFileName()
+    [System.IO.File]::WriteAllText($kiroTmp, ($kiroExisting | ConvertTo-Json -Depth 5 -Compress))
+    & $Python -c "import json,sys;d=json.load(open(sys.argv[1]));open(sys.argv[2],'w',encoding='utf-8').write(json.dumps(d,indent=2)+'\n')" $kiroTmp $KiroConf
+    Remove-Item $kiroTmp -ErrorAction SilentlyContinue
+
+    Write-Host "[$Tool] MCP config written -> $KiroConf"
+    Write-Host "[$Tool] MCP URL: http://127.0.0.1:$McpPort/mcp"
+    Write-Host ""
+
+    Set-Location $ProjectPath
+    Write-Host "[$Tool] Starting kiro-cli..."
+    Write-Host ""
+    kiro-cli chat --trust-all-tools
+}
+
+# -- Command Code: register MCP and launch ------------------------------------
+if ($Assistant -eq "command-code") {
+    $ccBin = "command-code"
+    if (-not (Get-Command command-code -ErrorAction SilentlyContinue)) {
+        Write-Host "[$Tool] command-code not found - installing..."
+        try { npm install -g command-code } catch {}
+        $env:PATH = [System.Environment]::GetEnvironmentVariable("PATH", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("PATH", "User")
+        if (-not (Get-Command command-code -ErrorAction SilentlyContinue)) {
+            Write-Host "[$Tool] ERROR: could not auto-install command-code."
+            Write-Host "[$Tool]   npm install -g command-code"
+            Stop-Process -Id $mcpProc.Id -Force -ErrorAction SilentlyContinue
+            exit 1
+        }
+        Write-Host "[$Tool] command-code installed."
+    }
+
+    $ccUrl = "http://127.0.0.1:$McpPort/mcp"
+    Write-Host "[$Tool] Registering dual-graph MCP server with Command Code..."
+    & $ccBin mcp add --transport http dual-graph $ccUrl --scope user 2>$null
+    if ($LASTEXITCODE -ne 0) {
+        $CcDir = Join-Path $env:USERPROFILE ".commandcode"
+        New-Item -ItemType Directory -Force -Path $CcDir | Out-Null
+        $CcConf = Join-Path $CcDir "mcp.json"
+        $ccExisting = [PSCustomObject]@{ mcpServers = [PSCustomObject]@{} }
+        if (Test-Path $CcConf) {
+            try {
+                $parsed = Get-Content $CcConf -Raw | ConvertFrom-Json
+                if ($parsed) { $ccExisting = $parsed }
+            } catch {}
+        }
+        if (-not $ccExisting.mcpServers) {
+            $ccExisting | Add-Member -NotePropertyName "mcpServers" -NotePropertyValue ([PSCustomObject]@{}) -Force
+        }
+        $ccExisting.mcpServers | Add-Member -NotePropertyName "dual-graph" `
+            -NotePropertyValue ([PSCustomObject]@{ transport = "http"; url = $ccUrl }) -Force
+        $ccTmp = [System.IO.Path]::GetTempFileName()
+        [System.IO.File]::WriteAllText($ccTmp, ($ccExisting | ConvertTo-Json -Depth 5 -Compress))
+        & $Python -c "import json,sys;d=json.load(open(sys.argv[1]));open(sys.argv[2],'w',encoding='utf-8').write(json.dumps(d,indent=2)+'\n')" $ccTmp $CcConf
+        Remove-Item $ccTmp -ErrorAction SilentlyContinue
+        Write-Host "[$Tool] MCP config written -> $CcConf"
+    } else {
+        Write-Host "[$Tool] MCP server registered via command-code CLI."
+    }
+    Write-Host "[$Tool] MCP URL: $ccUrl"
+    Write-Host ""
+
+    Set-Location $ProjectPath
+    Write-Host "[$Tool] Starting Command Code..."
+    Write-Host ""
+    & $ccBin
 }
 
 # Cleanup
