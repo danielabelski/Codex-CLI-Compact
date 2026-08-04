@@ -442,7 +442,7 @@ export DG_TOOLNAME="$RUNTIME_TOOLNAME"
 _BANNER_VER="$(cat "$SCRIPT_DIR/version.txt" 2>/dev/null || echo "0")"
 _UTF8=false
 case "${LANG:-}${LC_ALL:-}${LC_CTYPE:-}" in *[Uu][Tt][Ff]*8*|*utf8*) _UTF8=true ;; esac
-[[ "$TERM_PROGRAM" == "Apple_Terminal" || "$TERM_PROGRAM" == "iTerm"* || -n "${WT_SESSION:-}" ]] && _UTF8=true
+[[ "${TERM_PROGRAM:-}" == "Apple_Terminal" || "${TERM_PROGRAM:-}" == "iTerm"* || -n "${WT_SESSION:-}" ]] && _UTF8=true
 echo ""
 if $_UTF8; then
   printf "  \033[92m ▄▀▀▀ █▀▀▄ ▄▀▀▄ █▀▀█ █▀▀▀ █▀▀▄ ▄▀▀▄ ▄▀▀▄ ▀█▀\033[0m\n"
@@ -461,6 +461,9 @@ else
   echo "  GrapeRoot is free. A GitHub star is all we ask -- it keeps us going."
 fi
 echo "     https://github.com/kunal12203/GrapeRoot | support@graperoot.dev | discord.com/invite/YwKdQATY2d"
+echo ""
+echo "  Share your projects on our catalog to get traction (thousands of daily visits):"
+echo "     https://graperoot.dev/catalog"
 echo ""
 
 _platform_name() {
@@ -1058,8 +1061,6 @@ else
   _MCP_CMD=("$PYTHON" "$SCRIPT_DIR/mcp_graph_server.py")
 fi
 
-echo "[$TOOL_LABEL] Project : $PROJECT"
-echo "[$TOOL_LABEL] Data    : $DATA_DIR"
 echo ""
 
 mkdir -p "$DATA_DIR"
@@ -1890,7 +1891,6 @@ with open(settings_file, "w", encoding="utf-8") as f:
     json.dump(payload, f, indent=2)
     f.write("\n")
 PY
-  echo "[$TOOL_LABEL] Context hooks ready (SessionStart + PreCompact + Undo Shield)"
 fi
 # ──────────────────────────────────────────────────────────────────────────────
 
@@ -2108,9 +2108,7 @@ PY
   fi
 
   if [[ "${_CLAUDE_NEEDS_HTTP:-}" == "1" ]]; then
-    echo "[$TOOL_LABEL] MCP config updated -> http://127.0.0.1:$MCP_PORT/mcp (HTTP fallback)"
-  else
-    echo "[$TOOL_LABEL] MCP config updated -> stdio (no port needed)"
+    :
   fi
 
 
