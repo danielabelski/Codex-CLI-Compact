@@ -1,3 +1,8 @@
+3.10.18
+- Fixed: crash on Linux "TERM_PROGRAM: unbound variable" (affects all tools: --antigravity, --gemini, etc.)
+- Added: graperoot.dev/catalog link in startup banner
+- Removed: verbose startup messages (Project/Data paths, "Context hooks ready", "MCP config updated -> stdio")
+
 3.10.17
 - Added: Kiro CLI support (graperoot --kiro)
 - Added: Command Code support (graperoot --command-code)
