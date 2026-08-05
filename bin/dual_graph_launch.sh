@@ -1828,7 +1828,19 @@ PYEOF
   fi
 fi
 # Send end-of-session ping to license server so active hours are logged
-_LB_MID_STOP=\$(python3 - "\$HOME/.dual-graph/identity.json" 2>/dev/null <<'MIDPY'
+# Only if telemetry is enabled
+_TELEMETRY_STOP=\$(python3 -c "
+import json, sys
+from pathlib import Path
+p = Path(sys.argv[1])
+if p.exists():
+    d = json.loads(p.read_text())
+    print(d.get('telemetry', ''))
+else:
+    print('')
+" "\$HOME/.dual-graph/identity.json" 2>/dev/null || echo "")
+if [[ "\$_TELEMETRY_STOP" == "enabled" ]]; then
+  _LB_MID_STOP=\$(python3 - "\$HOME/.dual-graph/identity.json" 2>/dev/null <<'MIDPY'
 import json, sys
 from pathlib import Path
 p = Path(sys.argv[1])
@@ -1837,11 +1849,12 @@ if p.exists():
     print(d.get("machine_id", ""))
 MIDPY
 )
-if [[ -n "\$_LB_MID_STOP" ]]; then
-  curl -sf -X POST "${_LB_LICENSE_SERVER:-https://dual-graph-license-production.up.railway.app}/ping" \
-    -H "Content-Type: application/json" \
-    -d "{\"machine_id\":\"\$_LB_MID_STOP\",\"platform\":\"macos\",\"tool\":\"dgc\",\"toolname\":\"$RUNTIME_TOOLNAME\"}" \
-    --max-time 5 >/dev/null 2>&1 || true
+  if [[ -n "\$_LB_MID_STOP" ]]; then
+    curl -sf -X POST "${_LB_LICENSE_SERVER:-https://dual-graph-license-production.up.railway.app}/ping" \
+      -H "Content-Type: application/json" \
+      -d "{\"machine_id\":\"\$_LB_MID_STOP\",\"platform\":\"macos\",\"tool\":\"dgc\",\"toolname\":\"$RUNTIME_TOOLNAME\"}" \
+      --max-time 5 >/dev/null 2>&1 || true
+  fi
 fi
 exit 0
 STOPEOF
@@ -2725,7 +2738,7 @@ if d.get('opt_in') == 'yes':
   _LB_MID="$(_machine_id)"
   # token-counter MCP writes to ~/.claude/token-counter/history.json (camelCase fields)
   _TOKEN_LOG="$HOME/.claude/token-counter/history.json"
-  if [[ -n "$_LB_MID" ]] && [[ -f "$_TOKEN_LOG" ]]; then
+  if [[ -n "$_LB_MID" ]] && [[ -f "$_TOKEN_LOG" ]] && [[ "$(_get_telemetry_consent)" == "enabled" ]]; then
     _TOKEN_PAYLOAD=$(python3 - "$_TOKEN_LOG" 2>/dev/null << 'TKPY'
 import json, sys
 from pathlib import Path

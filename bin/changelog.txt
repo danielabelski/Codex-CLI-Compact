@@ -1,3 +1,6 @@
+3.10.19
+- Fixed: telemetry opt-out now fully respected (per-session ping and token/cost totals skip when --no-telemetry is set)
+
 3.10.18
 - Fixed: crash on Linux "TERM_PROGRAM: unbound variable" (affects all tools: --antigravity, --gemini, etc.)
 - Added: graperoot.dev/catalog link in startup banner
