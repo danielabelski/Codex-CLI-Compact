@@ -629,11 +629,13 @@ app.mount("/static", StaticFiles(directory=str(DASHBOARD_DIR / "static")), name=
 
 
 def main():
-    port = int(os.environ.get("GRAPEROOT_PORT", "9090"))
+    port = int(os.environ.get("GRAPEROOT_PORT", os.environ.get("DUAL_GRAPH_PORT", os.environ.get("PORT", "9090"))))
+    host = os.environ.get("HOST", "127.0.0.1")
     print(f"\n  GrapeRoot Dashboard v{_read_version()}")
-    print(f"  http://localhost:{port}\n")
-    webbrowser.open(f"http://localhost:{port}")
-    uvicorn.run(app, host="127.0.0.1", port=port, log_level="warning")
+    print(f"  http://{host}:{port}\n")
+    if not os.environ.get("RAILWAY_ENVIRONMENT"):
+        webbrowser.open(f"http://localhost:{port}")
+    uvicorn.run(app, host=host, port=port, log_level="warning")
 
 
 if __name__ == "__main__":
