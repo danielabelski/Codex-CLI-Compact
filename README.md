@@ -33,7 +33,9 @@
 
 ## What is GrapeRoot?
 
-GrapeRoot is an open-source **context engine** that sits between you and your AI coding assistant. It builds a semantic graph of your codebase — files, symbols, imports, call chains — and pre-loads exactly the right code into every prompt before your AI sees it.
+GrapeRoot is an **open-source launcher** that sits between you and your AI coding assistant. It builds a semantic graph of your codebase — files, symbols, imports, call chains — and pre-loads exactly the right code into every prompt before your AI sees it.
+
+> The launcher scripts in this repo are Apache 2.0. The graph engine (`graperoot` pip package) is proprietary.
 
 The result: your AI spends tokens **reasoning**, not exploring.
 

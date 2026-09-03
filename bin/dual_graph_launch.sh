@@ -194,8 +194,8 @@ if [[ "$ASSISTANT" != "codex" && "$ASSISTANT" != "claude" && "$ASSISTANT" != "cu
    && "$ASSISTANT" != "gemini" && "$ASSISTANT" != "opencode" && "$ASSISTANT" != "copilot" \
    && "$ASSISTANT" != "antigravity" && "$ASSISTANT" != "openclaw" \
    && "$ASSISTANT" != "kilocode" && "$ASSISTANT" != "mimocode" \
-   && "$ASSISTANT" != "kiro" && "$ASSISTANT" != "command-code" && "$ASSISTANT" != "leaderboard" ]]; then
-  echo "Usage: $0 <codex|claude|cursor|gemini|opencode|copilot|antigravity|openclaw|kilocode|mimocode|kiro|command-code> [project_path] [prompt]" >&2
+   && "$ASSISTANT" != "kiro" && "$ASSISTANT" != "command-code" && "$ASSISTANT" != "qwen" && "$ASSISTANT" != "leaderboard" ]]; then
+  echo "Usage: $0 <codex|claude|cursor|gemini|opencode|copilot|antigravity|openclaw|kilocode|mimocode|kiro|command-code|qwen> [project_path] [prompt]" >&2
   echo "       $0 audit [project_path]   — vibe code health report" >&2
   exit 2
 fi
@@ -677,6 +677,10 @@ elif [[ "$ASSISTANT" == "command-code" ]]; then
   DOC_FILE="$PROJECT/AGENTS.md"
   DOC_NAME="AGENTS.md"
   POLICY_MARKER="dgc-policy-v11"
+elif [[ "$ASSISTANT" == "qwen" ]]; then
+  DOC_FILE="$PROJECT/AGENTS.md"
+  DOC_NAME="AGENTS.md"
+  POLICY_MARKER="dgc-policy-v11"
 else
   # claude, copilot share CLAUDE.md as their context policy file
   DOC_FILE="$PROJECT/CLAUDE.md"
@@ -926,19 +930,19 @@ _install_deps() {
 
   # Use uv pip if available (10x faster, no build issues)
   if command -v uv &>/dev/null; then
-    if uv pip install --python "$py_cmd" "mcp>=1.3.0,<2.0.0" uvicorn anyio starlette graperoot 2>/dev/null; then
+    if uv pip install --python "$py_cmd" "mcp>=1.3.0,<1.20.0" uvicorn anyio starlette graperoot 2>/dev/null; then
       return 0
     fi
   fi
 
   # Standard pip
-  if "$pip_cmd" install "mcp>=1.3.0,<2.0.0" uvicorn anyio starlette graperoot --quiet 2>/tmp/dgc_pip_err.txt; then
+  if "$pip_cmd" install "mcp>=1.3.0,<1.20.0" uvicorn anyio starlette graperoot --quiet 2>/tmp/dgc_pip_err.txt; then
     return 0
   fi
 
   # Retry without cache (fixes corrupted cache issues)
   echo "[$TOOL_LABEL] Retrying pip install with --no-cache-dir..."
-  if "$pip_cmd" install "mcp>=1.3.0,<2.0.0" uvicorn anyio starlette graperoot --quiet --no-cache-dir 2>/tmp/dgc_pip_err.txt; then
+  if "$pip_cmd" install "mcp>=1.3.0,<1.20.0" uvicorn anyio starlette graperoot --quiet --no-cache-dir 2>/tmp/dgc_pip_err.txt; then
     return 0
   fi
 
@@ -2571,17 +2575,68 @@ PY
   echo "[$TOOL_LABEL] MCP URL: http://127.0.0.1:$MCP_PORT/mcp"
 fi
 
+# -- Qwen Code: write .qwen/settings.json and launch --------------------------
+if [[ "$ASSISTANT" == "qwen" ]]; then
+  CURRENT_STEP="Registering MCP (Qwen Code)"
+  if ! command -v qwen-code &>/dev/null; then
+    echo "[$TOOL_LABEL] qwen-code not found — installing..."
+    if command -v npm &>/dev/null; then
+      npm install -g qwen-code >/dev/null 2>&1 || true
+    fi
+    export PATH="$PATH:$(npm config get prefix 2>/dev/null)/bin:$HOME/.npm-global/bin:$HOME/.local/bin"
+    if ! command -v qwen-code &>/dev/null; then
+      echo "[$TOOL_LABEL] ERROR: could not auto-install qwen-code."
+      echo "[$TOOL_LABEL]   npm install -g qwen-code"
+      _send_cli_error "Registering MCP" "qwen-code CLI not found, auto-install failed"
+      exit 1
+    fi
+    echo "[$TOOL_LABEL] qwen-code installed."
+  fi
+  mkdir -p "$PROJECT/.qwen"
+  "$PYTHON" - "$PROJECT/.qwen/settings.json" "$MCP_PORT" <<'PY'
+import json, sys, os
+config_file = sys.argv[1]
+port = sys.argv[2]
+existing = {}
+if os.path.exists(config_file):
+    try:
+        with open(config_file, "r", encoding="utf-8") as f:
+            existing = json.load(f)
+    except Exception:
+        pass
+servers = existing.get("mcpServers", {})
+servers["dual-graph"] = {"url": f"http://127.0.0.1:{port}/mcp"}
+existing["mcpServers"] = servers
+with open(config_file, "w", encoding="utf-8") as f:
+    json.dump(existing, f, indent=2)
+    f.write("\n")
+PY
+  echo "[$TOOL_LABEL] MCP config written -> $PROJECT/.qwen/settings.json"
+  echo "[$TOOL_LABEL] MCP URL: http://127.0.0.1:$MCP_PORT/mcp"
+fi
+
 # -- Command Code: register MCP and launch ------------------------------------
 if [[ "$ASSISTANT" == "command-code" ]]; then
   CURRENT_STEP="Registering MCP (Command Code)"
 
-  if ! command -v cmd &>/dev/null || ! cmd --version 2>/dev/null | grep -qi "command.code"; then
-    echo "[$TOOL_LABEL] command-code (cmd) not found — installing..."
+  _CC_BIN=""
+  if command -v command-code &>/dev/null; then
+    _CC_BIN="command-code"
+  elif command -v cmd &>/dev/null && cmd --version 2>/dev/null | grep -qi "command.code"; then
+    _CC_BIN="cmd"
+  fi
+  if [[ -z "$_CC_BIN" ]]; then
+    echo "[$TOOL_LABEL] command-code not found — installing..."
     if command -v npm &>/dev/null; then
       npm install -g command-code >/dev/null 2>&1 || true
     fi
     export PATH="$PATH:$(npm config get prefix 2>/dev/null)/bin:$HOME/.npm-global/bin:$HOME/.local/bin"
-    if ! command -v cmd &>/dev/null; then
+    if command -v command-code &>/dev/null; then
+      _CC_BIN="command-code"
+    elif command -v cmd &>/dev/null && cmd --version 2>/dev/null | grep -qi "command.code"; then
+      _CC_BIN="cmd"
+    fi
+    if [[ -z "$_CC_BIN" ]]; then
       echo "[$TOOL_LABEL] ERROR: could not auto-install command-code."
       echo "[$TOOL_LABEL]   npm install -g command-code"
       _send_cli_error "Registering MCP" "command-code CLI not found, auto-install failed"
@@ -2591,7 +2646,7 @@ if [[ "$ASSISTANT" == "command-code" ]]; then
   fi
 
   _CC_URL="http://127.0.0.1:$MCP_PORT/mcp"
-  if cmd mcp add --transport http dual-graph "$_CC_URL" --scope user 2>/dev/null; then
+  if "$_CC_BIN" mcp add --transport http dual-graph "$_CC_URL" --scope user 2>/dev/null; then
     echo "[$TOOL_LABEL] MCP server registered via cmd CLI."
   else
     # Fallback: write directly to ~/.commandcode/mcp.json
@@ -2638,6 +2693,7 @@ if [[ ! -f "$_INSTALL_DATE_FILE" ]]; then
   echo "  graperoot [path] --openclaw     OpenClaw"
   echo "  graperoot [path] --kiro         Kiro CLI"
   echo "  graperoot [path] --command-code Command Code"
+  echo "  graperoot [path] --qwen         Qwen Code"
   echo ""
   echo "  Shortcuts:"
   echo "    dgc [path]   →  graperoot [path] --claude"
@@ -2814,7 +2870,7 @@ CURRENT_STEP="Pre-flight checks"
 
 # 1. Verify the CLI tool is installed and in PATH (should already be fixed at registration step, but double-check)
 # For cursor/copilot, bin was resolved at registration; skip the PATH check.
-if [[ "$ASSISTANT" != "cursor" && "$ASSISTANT" != "copilot" && "$ASSISTANT" != "antigravity" && "$ASSISTANT" != "openclaw" && "$ASSISTANT" != "kiro" && "$ASSISTANT" != "command-code" ]] && ! command -v "$ASSISTANT" &>/dev/null; then
+if [[ "$ASSISTANT" != "cursor" && "$ASSISTANT" != "copilot" && "$ASSISTANT" != "antigravity" && "$ASSISTANT" != "openclaw" && "$ASSISTANT" != "kiro" && "$ASSISTANT" != "command-code" && "$ASSISTANT" != "qwen" ]] && ! command -v "$ASSISTANT" &>/dev/null; then
   # Refresh PATH one more time
   export PATH="$PATH:$(npm config get prefix 2>/dev/null)/bin:$HOME/.npm-global/bin:$HOME/.local/bin"
   if ! command -v "$ASSISTANT" &>/dev/null; then
@@ -2846,7 +2902,7 @@ fi
 # 3. Quick smoke test — verify CLI responds (catches broken installs, missing deps)
 # cursor is validated via CURSOR_BIN at registration time; skip --version check for it.
 _SMOKE_BIN="${CURSOR_BIN:-${CODE_BIN:-$ASSISTANT}}"
-if [[ "$ASSISTANT" != "cursor" && "$ASSISTANT" != "copilot" && "$ASSISTANT" != "antigravity" && "$ASSISTANT" != "openclaw" && "$ASSISTANT" != "kiro" && "$ASSISTANT" != "command-code" ]] && ! "$_SMOKE_BIN" --version &>/dev/null 2>&1; then
+if [[ "$ASSISTANT" != "cursor" && "$ASSISTANT" != "copilot" && "$ASSISTANT" != "antigravity" && "$ASSISTANT" != "openclaw" && "$ASSISTANT" != "kiro" && "$ASSISTANT" != "command-code" && "$ASSISTANT" != "qwen" ]] && ! "$_SMOKE_BIN" --version &>/dev/null 2>&1; then
   echo "[$TOOL_LABEL] WARNING: '$ASSISTANT --version' failed. The CLI may not work correctly."
   case "$ASSISTANT" in
     claude)   echo "[$TOOL_LABEL] Try reinstalling: npm install -g @anthropic-ai/claude-code" ;;
@@ -2943,9 +2999,19 @@ elif [[ "$ASSISTANT" == "command-code" ]]; then
   _LAUNCH_ARGS=()
   [[ -n "$PROMPT" ]] && _LAUNCH_ARGS+=("$PROMPT")
   if [[ ${#_LAUNCH_ARGS[@]} -gt 0 ]]; then
-    cmd "${_LAUNCH_ARGS[@]}" 2>"$RUN_DIR/assistant_stderr.log"
+    "$_CC_BIN" "${_LAUNCH_ARGS[@]}" 2>"$RUN_DIR/assistant_stderr.log"
   else
-    cmd 2>"$RUN_DIR/assistant_stderr.log"
+    "$_CC_BIN" 2>"$RUN_DIR/assistant_stderr.log"
+  fi
+elif [[ "$ASSISTANT" == "qwen" ]]; then
+  # Qwen Code — launches interactive session
+  trap 'echo ""; echo "[$TOOL_LABEL] Shutting down MCP server (PID $MCP_PID)..."; kill "$MCP_PID" 2>/dev/null; rm -f "$RUN_DIR/mcp_server.pid" "$RUN_DIR/mcp_port"; exit 130' INT TERM HUP
+  _LAUNCH_ARGS=()
+  [[ -n "$PROMPT" ]] && _LAUNCH_ARGS+=("$PROMPT")
+  if [[ ${#_LAUNCH_ARGS[@]} -gt 0 ]]; then
+    qwen-code "${_LAUNCH_ARGS[@]}" 2>"$RUN_DIR/assistant_stderr.log"
+  else
+    qwen-code 2>"$RUN_DIR/assistant_stderr.log"
   fi
 else
   # Build launch args: optional prompt + all passthrough flags
